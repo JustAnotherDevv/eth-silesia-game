@@ -8,44 +8,101 @@ export function ThemeToggle() {
     if (stored) return stored === 'dark'
     return window.matchMedia('(prefers-color-scheme: dark)').matches
   })
+  const [hovered, setHovered] = useState(false)
+  const [pressed, setPressed] = useState(false)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
     localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
 
+  const ink    = dark ? '#FEF9EE' : '#1A0800'
+  const paper  = dark ? '#1A0800' : '#FEF9EE'
+  const track  = dark ? '#3D1E0A' : '#E8D5A3'
+  const knob   = dark ? '#FEF9EE' : '#1A0800'
+  const shadow = hovered
+    ? `5px 5px 0px ${ink}`
+    : pressed
+    ? `1px 1px 0px ${ink}`
+    : `3px 3px 0px ${ink}`
+  const translate = pressed
+    ? 'translate(1px, 1px)'
+    : hovered
+    ? 'translate(-1px, -1px)'
+    : 'translate(0, 0)'
+
   return (
     <button
       onClick={() => setDark((d) => !d)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setPressed(false) }}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
       aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="
-        relative flex items-center gap-1.5 px-3 py-2 rounded-full
-        rh-outline rh-shadow transition-all duration-100
-        bg-rh-cream dark:bg-rh-black
-        hover:-translate-x-0.5 hover:-translate-y-0.5 hover:rh-shadow-md
-        active:translate-x-0.5 active:translate-y-0.5
-      "
-      style={{ boxShadow: '3px 3px 0px #1A0800' }}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '6px 12px',
+        borderRadius: '9999px',
+        border: `2.5px solid ${ink}`,
+        backgroundColor: paper,
+        boxShadow: shadow,
+        transform: translate,
+        transition: 'box-shadow 80ms ease, transform 80ms ease, background-color 200ms ease',
+        cursor: 'pointer',
+        outline: 'none',
+      }}
     >
       <Sun
-        className={`size-4 transition-all duration-200 ${dark ? 'opacity-40 scale-75' : 'opacity-100 scale-100 text-rh-gold'}`}
+        size={16}
         strokeWidth={2.5}
+        style={{
+          color: dark ? ink : '#D97706',
+          opacity: dark ? 0.4 : 1,
+          transform: dark ? 'scale(0.75)' : 'scale(1)',
+          transition: 'opacity 200ms, transform 200ms, color 200ms',
+        }}
       />
+
       {/* pill track */}
       <span
-        className="relative inline-flex w-9 h-5 rounded-full border-2 border-rh-black bg-rh-tan dark:bg-rh-brown transition-colors duration-200"
+        style={{
+          position: 'relative',
+          display: 'inline-flex',
+          width: '36px',
+          height: '20px',
+          borderRadius: '9999px',
+          border: `2px solid ${ink}`,
+          backgroundColor: track,
+          transition: 'background-color 200ms',
+          flexShrink: 0,
+        }}
       >
         <span
-          className={`
-            absolute top-0.5 size-3 rounded-full border-2 border-rh-black bg-rh-black dark:bg-rh-cream
-            transition-all duration-200
-            ${dark ? 'translate-x-4' : 'translate-x-0.5'}
-          `}
+          style={{
+            position: 'absolute',
+            top: '2px',
+            left: dark ? '16px' : '2px',
+            width: '12px',
+            height: '12px',
+            borderRadius: '9999px',
+            border: `2px solid ${ink}`,
+            backgroundColor: knob,
+            transition: 'left 200ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 200ms',
+          }}
         />
       </span>
+
       <Moon
-        className={`size-4 transition-all duration-200 ${dark ? 'opacity-100 scale-100 text-rh-blue' : 'opacity-40 scale-75'}`}
+        size={16}
         strokeWidth={2.5}
+        style={{
+          color: dark ? '#93C5FD' : ink,
+          opacity: dark ? 1 : 0.4,
+          transform: dark ? 'scale(1)' : 'scale(0.75)',
+          transition: 'opacity 200ms, transform 200ms, color 200ms',
+        }}
       />
     </button>
   )

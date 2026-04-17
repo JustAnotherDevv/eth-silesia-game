@@ -330,6 +330,27 @@
   to   { transform: translateX(-50%); }
 }
 
+/* page-flip shadow: pulses 0→1→0, darkest at mid-flip */
+@keyframes flip-shade {
+  0%   { opacity: 0; }
+  28%  { opacity: 1; }
+  72%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* cast shadow on revealed page: strong at start, gone at end */
+@keyframes flip-cast {
+  0%   { opacity: 1; }
+  55%  { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+/* spine highlight: thin bright line at fold point */
+@keyframes flip-highlight {
+  0%   { opacity: 0; transform: scaleY(1); }
+  45%  { opacity: 0.7; }
+  55%  { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
 /* ── 6. Global Base Styles ───────────────────────────────── */
 @layer base {
   html {

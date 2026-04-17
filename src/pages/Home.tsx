@@ -331,18 +331,43 @@ export default function Home() {
     position: 'relative', zIndex: 1,
     transformOrigin: origin,
     transform:  flipped ? (origin === 'left center' ? 'rotateY(-180deg)' : 'rotateY(180deg)') : 'rotateY(0deg)',
-    transition: flipped ? `transform ${FLIP_MS}ms cubic-bezier(0.4,0,0.2,1)` : 'none',
+    // easeInOutCubic: slow start/end like a real page with paper resistance
+    transition: flipped ? `transform ${FLIP_MS}ms cubic-bezier(0.645, 0.045, 0.355, 1.000)` : 'none',
     transformStyle: 'preserve-3d',
   })
+
+  // Shadow overlay helpers (direction = which side the spine/fold is on)
+  const shadeLeaf = (fromSide: 'left'|'right') => (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10,
+      background: fromSide === 'left'
+        ? 'linear-gradient(to right, rgba(0,0,0,0.28) 0%, transparent 70%)'
+        : 'linear-gradient(to left,  rgba(0,0,0,0.28) 0%, transparent 70%)',
+      animation: `flip-shade ${FLIP_MS}ms ease-in-out both`,
+    }}/>
+  )
+  const castShadow = (fromSide: 'left'|'right') => (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+      background: fromSide === 'left'
+        ? 'linear-gradient(to right, rgba(0,0,0,0.35) 0%, transparent 65%)'
+        : 'linear-gradient(to left,  rgba(0,0,0,0.35) 0%, transparent 65%)',
+      animation: `flip-cast ${FLIP_MS}ms ease-out both`,
+    }}/>
+  )
+  const spineHighlight = (side: 'left'|'right') => (
+    <div style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 11,
+      ...(side === 'left' ? { left: 0, width: '6px' } : { right: 0, width: '6px' }),
+      background: side === 'left'
+        ? 'linear-gradient(to right, rgba(255,255,255,0.55) 0%, transparent 100%)'
+        : 'linear-gradient(to left,  rgba(255,255,255,0.55) 0%, transparent 100%)',
+      animation: `flip-highlight ${FLIP_MS}ms ease-in-out both`,
+    }}/>
+  )
 
   function renderBody() {
     // ── Case A: static at spread 0 (full-page) ──────────────
     if (idx === 0 && !flipping) {
       return (
-        <div
-          onClick={() => flip('fwd')}
-          style={{ cursor: 'e-resize' }}
-        >
+        <div onClick={() => flip('fwd')} style={{ cursor: 'e-resize' }}>
           <OldHomepageBody />
         </div>
       )
@@ -352,14 +377,22 @@ export default function Home() {
     if (flipping && dir === 'fwd' && idx === 0) {
       return (
         <div style={{ position: 'relative' }}>
-          {/* Revealed: spread 1 two-column */}
+          {/* Revealed: spread 1 two-column with cast shadow */}
           <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
             <TwoColSpread left={tgt.left} right={tgt.right} />
+            {castShadow('left')}
           </div>
           {/* Leaf: full old homepage sweeps left */}
           <div style={leafStyle('left center', leafFlipped)}>
-            <div style={{ backfaceVisibility: 'hidden', background: paper }}><OldHomepageBody /></div>
-            <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0, background: paper }}>{tgt.left}</div>
+            <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
+              <OldHomepageBody />
+              {shadeLeaf('left')}
+              {spineHighlight('left')}
+            </div>
+            <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0, background: paper }}>
+              {tgt.left}
+              {shadeLeaf('right')}
+            </div>
           </div>
         </div>
       )
@@ -369,16 +402,21 @@ export default function Home() {
     if (flipping && dir === 'bwd' && targetIdx === 0) {
       return (
         <div style={{ position: 'relative' }}>
-          {/* Revealed: spread 0 full-page */}
+          {/* Revealed: spread 0 full-page with cast shadow */}
           <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
             <OldHomepageBody />
+            {castShadow('right')}
           </div>
           {/* Leaf: current spread sweeps right */}
           <div style={leafStyle('right center', leafFlipped)}>
-            <div style={{ backfaceVisibility: 'hidden', background: paper }}>
+            <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
               <TwoColSpread left={curr.left} right={curr.right} />
+              {shadeLeaf('right')}
+              {spineHighlight('right')}
             </div>
-            <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0, background: paper }} />
+            <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0, background: paper }}>
+              {shadeLeaf('left')}
+            </div>
           </div>
         </div>
       )
@@ -387,14 +425,26 @@ export default function Home() {
     // ── Case D: normal two-column flips (spreads 1 ↔ 2) ────
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+
         {/* Left column */}
         <div style={{ borderRight: `2px solid ${ink}`, position: 'relative' }}>
           {flipping && dir === 'bwd' ? (
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>{tgt.left}</div>
+              {/* Revealed page + cast shadow */}
+              <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                {tgt.left}
+                {castShadow('right')}
+              </div>
               <div style={leafStyle('right center', leafFlipped)}>
-                <div style={{ backfaceVisibility: 'hidden', background: paper }}>{curr.left}</div>
-                <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0, background: paper }}>{tgt.right}</div>
+                <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
+                  {curr.left}
+                  {shadeLeaf('right')}
+                  {spineHighlight('right')}
+                </div>
+                <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0, background: paper }}>
+                  {tgt.right}
+                  {shadeLeaf('left')}
+                </div>
               </div>
             </div>
           ) : (
@@ -403,14 +453,26 @@ export default function Home() {
             </div>
           )}
         </div>
+
         {/* Right column */}
         <div style={{ position: 'relative' }}>
           {flipping && dir === 'fwd' ? (
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>{tgt.right}</div>
+              {/* Revealed page + cast shadow */}
+              <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                {tgt.right}
+                {castShadow('left')}
+              </div>
               <div style={leafStyle('left center', leafFlipped)}>
-                <div style={{ backfaceVisibility: 'hidden', background: paper }}>{curr.right}</div>
-                <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0, background: paper }}>{tgt.left}</div>
+                <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
+                  {curr.right}
+                  {shadeLeaf('left')}
+                  {spineHighlight('left')}
+                </div>
+                <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', position: 'absolute', inset: 0, background: paper }}>
+                  {tgt.left}
+                  {shadeLeaf('right')}
+                </div>
               </div>
             </div>
           ) : (
@@ -419,6 +481,7 @@ export default function Home() {
             </div>
           )}
         </div>
+
       </div>
     )
   }
@@ -495,7 +558,7 @@ export default function Home() {
         )}
 
         {/* ── Body ──────────────────────────────────────────── */}
-        <div style={{ perspective: '4000px', perspectiveOrigin: '50% 0%' }}>
+        <div style={{ perspective: '1200px', perspectiveOrigin: '50% 50%' }}>
           {renderBody()}
         </div>
 

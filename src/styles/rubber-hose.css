@@ -325,6 +325,11 @@
   to   { transform: rotate(360deg) scale(1); }
 }
 
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
 /* ── 6. Global Base Styles ───────────────────────────────── */
 @layer base {
   html {

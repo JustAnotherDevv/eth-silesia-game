@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
 const FLIP_MS   = 700
@@ -321,6 +321,16 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey)
   }, [flip])
 
+  // Measure spread-0's natural rendered height once fonts are ready,
+  // then lock every spread to that exact height so nothing jumps.
+  const bodyRef  = useRef<HTMLDivElement>(null)
+  const [bodyHeight, setBodyHeight] = useState(0)
+  useEffect(() => {
+    document.fonts.ready.then(() => {
+      if (bodyRef.current) setBodyHeight(bodyRef.current.scrollHeight)
+    })
+  }, [])
+
   const curr = SPREADS[idx]
   const tgt  = SPREADS[targetIdx]
 
@@ -554,10 +564,11 @@ export default function Home() {
         )}
 
         {/* ── Body ──────────────────────────────────────────── */}
-        <div style={{
+        <div ref={bodyRef} style={{
           perspective: '900px',
           perspectiveOrigin: dir === 'fwd' ? '65% 85%' : '35% 85%',
-          height: '520px',   /* fixed — all spreads same height, no jumping */
+          // 0 = first render (still measuring); lock to measured height after fonts load
+          height: bodyHeight > 0 ? `${bodyHeight}px` : 'auto',
           overflow: 'hidden',
           position: 'relative',
         }}>

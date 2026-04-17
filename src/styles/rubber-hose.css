@@ -369,6 +369,87 @@
   100% { transform: rotateY(180deg) rotateZ(0deg)   rotateX(0deg); }
 }
 
+@keyframes coin-fall {
+  0%   { transform: translateY(-60px) rotate(0deg);   opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(900deg); opacity: 0; }
+}
+@keyframes choice-exit {
+  0%   { transform: scale(1)    translateX(0);    opacity: 1; }
+  100% { transform: scale(0.7)  translateX(-8px); opacity: 0; }
+}
+@keyframes consequence-in {
+  0%   { clip-path: circle(0% at 50% 50%);   opacity: 0; }
+  100% { clip-path: circle(100% at 50% 50%); opacity: 1; }
+}
+@keyframes verdict-slam {
+  0%   { transform: scaleX(1.35) scaleY(0.55) rotate(-2deg); opacity: 0; }
+  55%  { transform: scaleX(0.92) scaleY(1.08) rotate(0.5deg); opacity: 1; }
+  75%  { transform: scaleX(1.04) scaleY(0.97) rotate(0deg); }
+  100% { transform: scaleX(1)    scaleY(1)    rotate(0deg); opacity: 1; }
+}
+@keyframes xp-count-pop {
+  0%   { transform: scale(0.5) rotate(-6deg); opacity: 0; }
+  60%  { transform: scale(1.22) rotate(2deg); opacity: 1; }
+  80%  { transform: scale(0.9) rotate(-0.5deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes disaster-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10%  { transform: translateX(-12px) rotate(-3deg); }
+  25%  { transform: translateX(12px)  rotate(3deg); }
+  40%  { transform: translateX(-9px)  rotate(-2deg); }
+  55%  { transform: translateX(9px)   rotate(2deg); }
+  70%  { transform: translateX(-5px)  rotate(-1deg); }
+  85%  { transform: translateX(5px)   rotate(1deg); }
+}
+@keyframes orbit-star {
+  0%   { transform: rotate(0deg)   translateX(55px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(55px) rotate(-360deg); }
+}
+@keyframes orbit-star-2 {
+  0%   { transform: rotate(180deg) translateX(55px) rotate(-180deg); }
+  100% { transform: rotate(540deg) translateX(55px) rotate(-540deg); }
+}
+@keyframes scale-up-bounce {
+  0%   { transform: scale(0) rotate(-5deg); }
+  60%  { transform: scale(1.18) rotate(2deg); }
+  80%  { transform: scale(0.92) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+@keyframes moth-fly-1 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-80px, -120px) rotate(-180deg); opacity: 0; }
+}
+@keyframes moth-fly-2 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(80px, -100px) rotate(200deg); opacity: 0; }
+}
+@keyframes moth-fly-3 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-20px, -140px) rotate(-90deg); opacity: 0; }
+}
+@keyframes coin-fly-1 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-120px, -80px) rotate(-360deg); opacity: 0; }
+}
+@keyframes coin-fly-2 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(100px, -100px) rotate(360deg); opacity: 0; }
+}
+@keyframes coin-fly-3 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(30px, -130px) rotate(180deg); opacity: 0; }
+}
+@keyframes coin-fly-4 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-60px, -110px) rotate(-270deg); opacity: 0; }
+}
+@keyframes briefing-in {
+  0%   { transform: translateY(30px) rotate(1.5deg); opacity: 0; }
+  100% { transform: translateY(0)    rotate(0deg);   opacity: 1; }
+}
+
 /* ── 6. Global Base Styles ───────────────────────────────── */
 @layer base {
   html {

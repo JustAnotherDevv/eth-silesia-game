@@ -24,7 +24,7 @@ const PLAYER = { name: 'Rookie Investor', level: 1, xp: 340, xpMax: 1000, streak
 
 const GAME_MODES_DATA = [
   { tag: 'QUICK ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Are You Smarter Than Your Bank Manager?',            body: 'Five rapid-fire questions. Thirty seconds each. Your financial IQ is about to be revealed.',             emoji: '🎯', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
-  { tag: 'DECISION ROOM', kicker: 'EXCLUSIVE SCENARIO',  headline: 'Young Investor Faces Impossible Choice',             body: 'One scenario. Multiple paths. Real consequences. Enter the Decision Room and choose wisely.',          emoji: '🎲', accent: '#E63946', cta: 'Enter Room →',    href: '#'     },
+  { tag: 'DECISION ROOM', kicker: 'EXCLUSIVE SCENARIO',  headline: 'Young Investor Faces Impossible Choice',             body: 'One scenario. Multiple paths. Real consequences. Enter the Decision Room and choose wisely.',          emoji: '🎲', accent: '#E63946', cta: 'Enter Room →',    href: '/decision' },
   { tag: 'DAILY STREAK',  kicker: 'STREAK CHALLENGE',    headline: "The 30-Day Challenge That Changed One Investor's Life", body: "One challenge per day keeps financial ignorance at bay. Your streak multiplier is waiting.",          emoji: '🔥', accent: '#FF7B25', cta: 'Claim Reward →', href: '#'     },
 ]
 

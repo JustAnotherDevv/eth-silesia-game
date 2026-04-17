@@ -76,7 +76,7 @@ import { Calendar } from '@/components/ui/calendar'
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-14">
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-5 pb-2 border-b">{title}</h2>
+      <div className="rh-intertitle mb-5">{title}</div>
       <div className="flex flex-wrap gap-4 items-start">{children}</div>
     </section>
   )
@@ -95,14 +95,20 @@ export default function Design() {
       <Toaster />
 
       {/* ── Sticky header with theme toggle ── */}
-      <header className="sticky top-0 z-50 flex justify-end px-6 py-3 bg-background/80 backdrop-blur-sm border-b border-rh-black/20">
+      <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-background/90 backdrop-blur-sm border-b-2 border-rh-black/20">
+        <div className="flex items-center gap-2">
+          <span className="rh-star-spin text-rh-gold text-lg select-none">★</span>
+          <span className="rh-font-heading text-sm tracking-widest uppercase opacity-60">Rubber Hose</span>
+        </div>
         <ThemeToggle />
       </header>
 
       <div className="min-h-screen bg-background p-10">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-4xl font-bold mb-2">Design System</h1>
-          <p className="text-muted-foreground mb-12">Every shadcn/ui component at a glance.</p>
+          <div className="mb-12">
+            <h1 className="text-5xl font-bold mb-3 rh-text-3d-lg">Design System</h1>
+            <p className="text-muted-foreground text-lg font-medium">Every component — rubber hose style. Built for PKO XP Gaming.</p>
+          </div>
 
           {/* ── BUTTONS ─────────────────────────────────────────── */}
           <Section title="Button">
@@ -705,6 +711,57 @@ export default function Design() {
             <Button variant="outline" onClick={() => toast.error('Something went wrong')}>Error</Button>
             <Button variant="outline" onClick={() => toast.warning('Heads up!')}>Warning</Button>
             <Button variant="outline" onClick={() => toast.info('FYI: update available')}>Info</Button>
+          </Section>
+
+          {/* ── RUBBER HOSE UTILITIES ───────────────────────────── */}
+          <Section title="RH Utilities — Text Effects">
+            <p className="rh-text-3d text-3xl rh-font-heading">Howdy!</p>
+            <p className="rh-text-3d-lg text-4xl rh-font-heading text-rh-red">POW!</p>
+            <p className="rh-text-outline text-3xl rh-font-heading">Outline</p>
+            <p className="rh-text-3d-red text-3xl rh-font-heading">Red 3D</p>
+            <p className="rh-text-3d-blue text-3xl rh-font-heading">Blue 3D</p>
+          </Section>
+
+          <Section title="RH Utilities — Panels &amp; Bubbles">
+            <div className="rh-panel w-64">
+              <div className="rh-panel-header">★ XP Earned</div>
+              <div className="rh-panel-body text-sm font-semibold">You gained 250 XP this round!</div>
+            </div>
+            <div className="rh-speech-bubble max-w-48 text-sm font-semibold mb-6">
+              Gosh, what a swell design system!
+            </div>
+            <div className="rh-think-bubble text-sm font-semibold px-4 py-2 mb-6">
+              Hmm...
+            </div>
+          </Section>
+
+          <Section title="RH Utilities — Stamps &amp; Shadows">
+            <span className="rh-stamp rh-stamp-red text-sm">APPROVED</span>
+            <span className="rh-stamp rh-stamp-blue text-sm">NEW</span>
+            <span className="rh-stamp rh-stamp-green text-sm">DONE</span>
+            <div className="w-16 h-16 bg-rh-yellow rh-outline rh-shadow-xl rounded-2xl" />
+            <div className="w-16 h-16 bg-rh-red rh-outline rh-shadow-red rounded-2xl" />
+            <div className="w-16 h-16 bg-rh-blue rh-outline rh-shadow-blue rounded-2xl" />
+            <div className="w-16 h-16 bg-rh-green rh-outline rh-shadow-green rounded-2xl" />
+          </Section>
+
+          <Section title="RH Utilities — Patterns">
+            <div className="rh-bg-polka rh-outline rh-shadow w-36 h-20 rounded-2xl" />
+            <div className="rh-bg-stripes-bold rh-outline rh-shadow w-36 h-20 rounded-2xl" />
+            <div className="rh-bg-checker rh-outline rh-shadow w-36 h-20 rounded-2xl" />
+            <div className="rh-bg-zigzag rh-outline rh-shadow w-36 h-20 rounded-2xl" />
+            <div className="rh-bg-newsprint rh-outline rh-shadow w-36 h-20 rounded-2xl" />
+            <div className="rh-bg-carnival-red rh-outline rh-shadow w-36 h-20 rounded-2xl" />
+          </Section>
+
+          <Section title="RH Utilities — Animations">
+            <button className="rh-outline rh-shadow rh-hover-wobble px-4 py-2 rounded-full font-bold bg-rh-yellow text-rh-black">Wobble</button>
+            <button className="rh-outline rh-shadow rh-hover-jelly px-4 py-2 rounded-full font-bold bg-rh-red text-rh-cream">Jelly</button>
+            <button className="rh-outline rh-shadow rh-hover-rubber-band px-4 py-2 rounded-full font-bold bg-rh-blue text-rh-cream">Rubber Band</button>
+            <button className="rh-outline rh-shadow rh-hover-shake px-4 py-2 rounded-full font-bold bg-rh-green text-rh-cream">Shake</button>
+            <button className="rh-outline rh-shadow rh-hover-wiggle px-4 py-2 rounded-full font-bold bg-rh-orange text-rh-black">Wiggle</button>
+            <button className="rh-outline rh-shadow rh-hover-heartbeat px-4 py-2 rounded-full font-bold bg-rh-pink text-rh-black">Heartbeat</button>
+            <div className="rh-outline rh-shadow rh-animate-float w-14 h-14 rounded-full bg-rh-parchment flex items-center justify-center text-2xl">🎩</div>
           </Section>
         </div>
       </div>

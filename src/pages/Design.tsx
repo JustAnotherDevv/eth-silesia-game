@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { ThemeToggle } from '@/components/ThemeToggle'
-
 // Toast
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
@@ -93,15 +91,6 @@ export default function Design() {
   return (
     <TooltipProvider>
       <Toaster />
-
-      {/* ── Sticky header with theme toggle ── */}
-      <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-3 bg-background/90 backdrop-blur-sm border-b-2 border-rh-black/20">
-        <div className="flex items-center gap-2">
-          <span className="rh-star-spin text-rh-gold text-lg select-none">★</span>
-          <span className="rh-font-heading text-sm tracking-widest uppercase opacity-60">Rubber Hose</span>
-        </div>
-        <ThemeToggle />
-      </header>
 
       <div className="min-h-screen bg-background p-10">
         <div className="max-w-5xl mx-auto">

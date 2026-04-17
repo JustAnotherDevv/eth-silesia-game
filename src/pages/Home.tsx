@@ -1,5 +1,4 @@
 import React from 'react'
-import { ThemeToggle } from '@/components/ThemeToggle'
 
 const TODAY = new Date().toLocaleDateString('en-US', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -56,11 +55,6 @@ export default function Home() {
       flexDirection: 'column',
       alignItems: 'center',
     }}>
-
-      {/* Theme toggle — sits above the newspaper */}
-      <div style={{ width: '100%', maxWidth: '980px', display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-        <ThemeToggle />
-      </div>
 
       {/* ── THE NEWSPAPER ────────────────────────────────────── */}
       <div style={{

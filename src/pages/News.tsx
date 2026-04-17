@@ -1,4 +1,3 @@
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { Progress } from '@/components/ui/progress'
 
 const TODAY = new Date().toLocaleDateString('en-US', {
@@ -109,10 +108,7 @@ export default function Home() {
       }}>
         <span>Vol. 1 · No. 42</span>
         <span>{TODAY}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <span>Price: Free</span>
-          <ThemeToggle />
-        </div>
+        <span>Price: Free</span>
       </div>
 
       {/* ── Masthead ──────────────────────────────────────────── */}

@@ -363,7 +363,7 @@ export default function Home() {
     // ── Case A: static at spread 0 (full-page) ──────────────
     if (idx === 0 && !flipping) {
       return (
-        <div onClick={() => flip('fwd')} style={{ cursor: 'e-resize', minHeight: '490px' }}>
+        <div onClick={() => flip('fwd')} style={{ cursor: 'e-resize', height: '100%' }}>
           <OldHomepageBody />
         </div>
       )
@@ -420,7 +420,7 @@ export default function Home() {
 
     // ── Case D: normal two-column flips (spreads 1 ↔ 2) ────
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '490px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: '100%' }}>
 
         {/* Left column */}
         <div style={{ borderRight: `2px solid ${ink}`, position: 'relative' }}>
@@ -556,9 +556,9 @@ export default function Home() {
         {/* ── Body ──────────────────────────────────────────── */}
         <div style={{
           perspective: '900px',
-          // viewer sits below-center so top-corner peel reads naturally
           perspectiveOrigin: dir === 'fwd' ? '65% 85%' : '35% 85%',
-          minHeight: '490px',
+          height: '520px',   /* fixed — all spreads same height, no jumping */
+          overflow: 'hidden',
           position: 'relative',
         }}>
           {renderBody()}
@@ -594,7 +594,7 @@ export default function Home() {
 
 function TwoColSpread({ left, right }: { left?: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '490px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: '100%' }}>
       <div style={{ borderRight: `2px solid ${ink}` }}>{left}</div>
       <div>{right}</div>
     </div>

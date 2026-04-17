@@ -330,25 +330,43 @@
   to   { transform: translateX(-50%); }
 }
 
-/* page-flip shadow: pulses 0→1→0, darkest at mid-flip */
+/* shadow on turning leaf: pulses 0→1→0, darkest at 90° */
 @keyframes flip-shade {
   0%   { opacity: 0; }
   28%  { opacity: 1; }
   72%  { opacity: 1; }
   100% { opacity: 0; }
 }
-/* cast shadow on revealed page: strong at start, gone at end */
+/* cast shadow on the revealed page: strong at start, fades out */
 @keyframes flip-cast {
   0%   { opacity: 1; }
   55%  { opacity: 0.55; }
   100% { opacity: 0; }
 }
-/* spine highlight: thin bright line at fold point */
+/* spine highlight flash */
 @keyframes flip-highlight {
-  0%   { opacity: 0; transform: scaleY(1); }
+  0%   { opacity: 0; }
   45%  { opacity: 0.7; }
   55%  { opacity: 0.7; }
   100% { opacity: 0; }
+}
+
+/* ── Corner-peel page flip ─────────────────────────────────
+   rotateZ creates the diagonal fold line (corner lifts first)
+   rotateX tilts top away for depth — both peak at mid-flip  */
+@keyframes flip-page-fwd {
+  0%   { transform: rotateY(0deg)    rotateZ(0deg)  rotateX(0deg); }
+  20%  { transform: rotateY(-36deg)  rotateZ(3deg)  rotateX(2deg); }
+  50%  { transform: rotateY(-90deg)  rotateZ(7deg)  rotateX(4deg); }
+  80%  { transform: rotateY(-144deg) rotateZ(3deg)  rotateX(2deg); }
+  100% { transform: rotateY(-180deg) rotateZ(0deg)  rotateX(0deg); }
+}
+@keyframes flip-page-bwd {
+  0%   { transform: rotateY(0deg)   rotateZ(0deg)   rotateX(0deg); }
+  20%  { transform: rotateY(36deg)  rotateZ(-3deg)  rotateX(2deg); }
+  50%  { transform: rotateY(90deg)  rotateZ(-7deg)  rotateX(4deg); }
+  80%  { transform: rotateY(144deg) rotateZ(-3deg)  rotateX(2deg); }
+  100% { transform: rotateY(180deg) rotateZ(0deg)   rotateX(0deg); }
 }
 
 /* ── 6. Global Base Styles ───────────────────────────────── */

@@ -294,11 +294,10 @@ const SPREADS: Spread[] = [
 // ─────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [idx,         setIdx]         = useState(0)
-  const [flipping,    setFlipping]    = useState(false)
-  const [dir,         setDir]         = useState<'fwd'|'bwd'>('fwd')
-  const [targetIdx,   setTargetIdx]   = useState(0)
-  const [leafFlipped, setLeafFlipped] = useState(false)
+  const [idx,       setIdx]       = useState(0)
+  const [flipping,  setFlipping]  = useState(false)
+  const [dir,       setDir]       = useState<'fwd'|'bwd'>('fwd')
+  const [targetIdx, setTargetIdx] = useState(0)
 
   const flip = useCallback((direction: 'fwd'|'bwd') => {
     const next = direction === 'fwd' ? idx + 1 : idx - 1
@@ -306,13 +305,11 @@ export default function Home() {
     setDir(direction)
     setTargetIdx(next)
     setFlipping(true)
-    setLeafFlipped(false)
-    requestAnimationFrame(() => requestAnimationFrame(() => setLeafFlipped(true)))
+    // @keyframes animation starts automatically on mount; settle state after it ends
     setTimeout(() => {
       setIdx(next)
       setFlipping(false)
-      setLeafFlipped(false)
-    }, FLIP_MS + 60)
+    }, FLIP_MS + 20)
   }, [idx, flipping])
 
   useEffect(() => {
@@ -327,13 +324,12 @@ export default function Home() {
   const curr = SPREADS[idx]
   const tgt  = SPREADS[targetIdx]
 
-  const leafStyle = (origin: string, flipped: boolean): React.CSSProperties => ({
+  // CSS @keyframes plays automatically on mount — no rAF needed
+  const leafAnim = (origin: 'left center' | 'right center'): React.CSSProperties => ({
     position: 'relative', zIndex: 1,
     transformOrigin: origin,
-    transform:  flipped ? (origin === 'left center' ? 'rotateY(-180deg)' : 'rotateY(180deg)') : 'rotateY(0deg)',
-    // easeInOutCubic: slow start/end like a real page with paper resistance
-    transition: flipped ? `transform ${FLIP_MS}ms cubic-bezier(0.645, 0.045, 0.355, 1.000)` : 'none',
     transformStyle: 'preserve-3d',
+    animation: `flip-page-${dir} ${FLIP_MS}ms cubic-bezier(0.645, 0.045, 0.355, 1.000) both`,
   })
 
   // Shadow overlay helpers (direction = which side the spine/fold is on)
@@ -367,7 +363,7 @@ export default function Home() {
     // ── Case A: static at spread 0 (full-page) ──────────────
     if (idx === 0 && !flipping) {
       return (
-        <div onClick={() => flip('fwd')} style={{ cursor: 'e-resize' }}>
+        <div onClick={() => flip('fwd')} style={{ cursor: 'e-resize', minHeight: '490px' }}>
           <OldHomepageBody />
         </div>
       )
@@ -383,7 +379,7 @@ export default function Home() {
             {castShadow('left')}
           </div>
           {/* Leaf: full old homepage sweeps left */}
-          <div style={leafStyle('left center', leafFlipped)}>
+          <div style={leafAnim('left center')}>
             <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
               <OldHomepageBody />
               {shadeLeaf('left')}
@@ -408,7 +404,7 @@ export default function Home() {
             {castShadow('right')}
           </div>
           {/* Leaf: current spread sweeps right */}
-          <div style={leafStyle('right center', leafFlipped)}>
+          <div style={leafAnim('right center')}>
             <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
               <TwoColSpread left={curr.left} right={curr.right} />
               {shadeLeaf('right')}
@@ -424,7 +420,7 @@ export default function Home() {
 
     // ── Case D: normal two-column flips (spreads 1 ↔ 2) ────
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '490px' }}>
 
         {/* Left column */}
         <div style={{ borderRight: `2px solid ${ink}`, position: 'relative' }}>
@@ -435,7 +431,7 @@ export default function Home() {
                 {tgt.left}
                 {castShadow('right')}
               </div>
-              <div style={leafStyle('right center', leafFlipped)}>
+              <div style={leafAnim('right center')}>
                 <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
                   {curr.left}
                   {shadeLeaf('right')}
@@ -463,7 +459,7 @@ export default function Home() {
                 {tgt.right}
                 {castShadow('left')}
               </div>
-              <div style={leafStyle('left center', leafFlipped)}>
+              <div style={leafAnim('left center')}>
                 <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
                   {curr.right}
                   {shadeLeaf('left')}
@@ -558,7 +554,13 @@ export default function Home() {
         )}
 
         {/* ── Body ──────────────────────────────────────────── */}
-        <div style={{ perspective: '1200px', perspectiveOrigin: '50% 50%' }}>
+        <div style={{
+          perspective: '900px',
+          // viewer sits below-center so top-corner peel reads naturally
+          perspectiveOrigin: dir === 'fwd' ? '65% 85%' : '35% 85%',
+          minHeight: '490px',
+          position: 'relative',
+        }}>
           {renderBody()}
         </div>
 
@@ -592,7 +594,7 @@ export default function Home() {
 
 function TwoColSpread({ left, right }: { left?: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '490px' }}>
       <div style={{ borderRight: `2px solid ${ink}` }}>{left}</div>
       <div>{right}</div>
     </div>

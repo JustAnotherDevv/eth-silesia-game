@@ -106,7 +106,7 @@ export default function Design() {
       <div className="min-h-screen bg-background p-10">
         <div className="max-w-5xl mx-auto">
           <div className="mb-12">
-            <h1 className="text-5xl font-bold mb-3 rh-text-3d-lg">Design System</h1>
+            <h1 className="text-4xl font-bold mb-2">Design System</h1>
             <p className="text-muted-foreground text-lg font-medium">Every component — rubber hose style. Built for PKO XP Gaming.</p>
           </div>
 

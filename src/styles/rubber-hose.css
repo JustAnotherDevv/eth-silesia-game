@@ -345,16 +345,9 @@
   h1 {
     font-family: 'Fredoka One', cursive;
     letter-spacing: 0.03em;
-    text-shadow:
-      3px 3px 0 var(--rh-ink),
-      4px 4px 0 color-mix(in srgb, var(--rh-ink) 35%, transparent);
+    text-shadow: 2px 2px 0 color-mix(in srgb, var(--rh-ink) 18%, transparent);
   }
-  h2 {
-    font-family: 'Fredoka One', cursive;
-    letter-spacing: 0.03em;
-    text-shadow: 2px 2px 0 var(--rh-ink), 3px 3px 0 color-mix(in srgb, var(--rh-ink) 25%, transparent);
-  }
-  h3, h4, h5, h6 {
+  h2, h3, h4, h5, h6 {
     font-family: 'Fredoka One', cursive;
     letter-spacing: 0.03em;
   }

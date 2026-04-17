@@ -321,13 +321,13 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey)
   }, [flip])
 
-  // Measure spread-0's natural rendered height once fonts are ready,
-  // then lock every spread to that exact height so nothing jumps.
-  const bodyRef  = useRef<HTMLDivElement>(null)
-  const [bodyHeight, setBodyHeight] = useState(0)
+  // Measure spread-0's full newspaper height once fonts load,
+  // then lock the newspaper box to that height forever.
+  const paperRef    = useRef<HTMLDivElement>(null)
+  const [paperHeight, setPaperHeight] = useState(0)
   useEffect(() => {
     document.fonts.ready.then(() => {
-      if (bodyRef.current) setBodyHeight(bodyRef.current.scrollHeight)
+      if (paperRef.current) setPaperHeight(paperRef.current.scrollHeight)
     })
   }, [])
 
@@ -503,7 +503,7 @@ export default function Home() {
     }}>
 
       {/* ── NEWSPAPER ─────────────────────────────────────── */}
-      <div style={{
+      <div ref={paperRef} style={{
         width: '100%', maxWidth: '1020px',
         background: paper,
         border: `3px solid ${ink}`,
@@ -513,6 +513,8 @@ export default function Home() {
         overflow: 'hidden',
         backgroundImage: 'radial-gradient(circle, var(--rh-body-dot) 0.8px, transparent 0.8px)',
         backgroundSize: '16px 16px',
+        // Lock to spread-0 height so flipping never resizes the newspaper
+        ...(paperHeight > 0 ? { height: `${paperHeight}px`, display: 'flex', flexDirection: 'column' } : { display: 'flex', flexDirection: 'column' }),
       }}>
 
         {/* ── Top meta ──────────────────────────────────────── */}
@@ -561,12 +563,11 @@ export default function Home() {
           </p>
         </div>
 
-        {/* ── Body ──────────────────────────────────────────── */}
-        <div ref={bodyRef} style={{
+        {/* ── Body — flex:1 fills whatever space is left so all spreads match ── */}
+        <div style={{
           perspective: '900px',
           perspectiveOrigin: dir === 'fwd' ? '65% 85%' : '35% 85%',
-          // 0 = first render (still measuring); lock to measured height after fonts load
-          height: bodyHeight > 0 ? `${bodyHeight}px` : 'auto',
+          flex: 1,
           overflow: 'hidden',
           position: 'relative',
         }}>
@@ -574,7 +575,7 @@ export default function Home() {
         </div>
 
         {/* ── Navigation bar ────────────────────────────────── */}
-        <div style={{ borderTop: `2px solid ${ink}`, padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: surface }}>
+        <div style={{ borderTop: `2px solid ${ink}`, padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: surface, flexShrink: 0 }}>
           <NavArrow disabled={idx === 0 || flipping} onClick={() => flip('bwd')}>← Prev Page</NavArrow>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {SPREADS.map((_, i) => (
@@ -657,5 +658,3 @@ function NavArrow({ children, onClick, disabled }: { children: React.ReactNode; 
   )
 }
 
-// Suppress unused warning — Panel and Rule used inside OldHomepageBody via PageStreak
-void Panel; void Rule

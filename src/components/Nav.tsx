@@ -2,10 +2,15 @@ import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from './ThemeToggle'
 
 const LINKS = [
-  { to: '/',       label: 'Home' },
-  { to: '/news',   label: 'News' },
-  { to: '/quiz',   label: 'Quick Rounds' },
-  { to: '/design', label: 'Design' },
+  { to: '/',            label: 'Home' },
+  { to: '/news',        label: 'News' },
+  { to: '/quiz',        label: 'Quick Rounds' },
+  { to: '/design',      label: 'Design' },
+]
+
+const RIGHT_LINKS = [
+  { to: '/leaderboard', label: '🏆 Leaderboard', accent: '#FFCD00' },
+  { to: '/profile',     label: '🎩 Profile',     accent: '#FF7B25' },
 ]
 
 export function Nav() {
@@ -59,8 +64,32 @@ export function Nav() {
         )
       })}
 
-      <div style={{ marginLeft: 'auto' }}>
-        <ThemeToggle />
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {RIGHT_LINKS.map(({ to, label, accent }) => {
+          const active = pathname === to
+          return (
+            <Link key={to} to={to} style={{
+              fontFamily: "'Fredoka One', cursive",
+              fontSize: '0.72rem',
+              letterSpacing: '0.08em',
+              textDecoration: 'none',
+              padding: '7px 14px',
+              borderRadius: '9999px',
+              border: `2px solid var(--rh-ink)`,
+              background: active ? 'var(--rh-ink)' : accent,
+              color: active ? 'var(--rh-paper)' : '#1A0800',
+              boxShadow: active ? '2px 2px 0 var(--rh-ink)' : `3px 3px 0 var(--rh-ink)`,
+              transition: 'transform 0.1s, box-shadow 0.1s',
+              whiteSpace: 'nowrap',
+            } as React.CSSProperties}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px,-1px)'; e.currentTarget.style.boxShadow = `4px 4px 0 var(--rh-ink)` }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = active ? '2px 2px 0 var(--rh-ink)' : `3px 3px 0 var(--rh-ink)` }}
+            >{label}</Link>
+          )
+        })}
+        <div style={{ marginLeft: '6px' }}>
+          <ThemeToggle />
+        </div>
       </div>
     </nav>
   )

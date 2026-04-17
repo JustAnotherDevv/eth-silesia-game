@@ -7,6 +7,8 @@ import Home from './pages/Home'
 import News from './pages/News'
 import Quiz from './pages/Quiz'
 import Design from './pages/Design'
+import Profile from './pages/Profile'
+import Leaderboard from './pages/Leaderboard'
 import { Nav } from './components/Nav'
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -24,6 +26,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/news" element={<Layout><News /></Layout>} />
         <Route path="/quiz" element={<Layout><Quiz /></Layout>} />
         <Route path="/design" element={<Layout><Design /></Layout>} />
+        <Route path="/profile" element={<Layout><Profile /></Layout>} />
+        <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,

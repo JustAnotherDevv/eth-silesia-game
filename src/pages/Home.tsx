@@ -543,25 +543,23 @@ export default function Home() {
           ))}
         </div>
 
-        {/* ── Per-spread headline (hidden on spread 0) ─────── */}
-        {(idx > 0 || flipping) && (
-          <div style={{ padding: '12px 18px 0', borderBottom: `1.5px solid ${ink}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-              <span style={{ background: ink, color: paper, fontFamily: "'Fredoka One', cursive", fontSize: '0.58rem', letterSpacing: '0.14em', padding: '2px 10px', borderRadius: '9999px' }}>
-                {(flipping ? tgt : curr).label.toUpperCase()}
-              </span>
-              <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.58rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.45 }}>
-                Page {(flipping ? targetIdx : idx)+1} of {SPREADS.length}
-              </span>
-            </div>
-            <h2 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(1.2rem, 2.5vw, 2rem)', lineHeight: 1.1, marginBottom: '4px' }}>
-              {(flipping ? tgt : curr).headline}
-            </h2>
-            <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.78rem', lineHeight: 1.4, opacity: 0.6, fontStyle: 'italic', marginBottom: '10px' }}>
-              {(flipping ? tgt : curr).subhead}
-            </p>
+        {/* ── Per-spread headline — always rendered so height is identical on every page ── */}
+        <div style={{ padding: '12px 18px 0', borderBottom: `1.5px solid ${ink}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+            <span style={{ background: ink, color: paper, fontFamily: "'Fredoka One', cursive", fontSize: '0.58rem', letterSpacing: '0.14em', padding: '2px 10px', borderRadius: '9999px' }}>
+              {(flipping ? tgt : curr).label.toUpperCase()}
+            </span>
+            <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.58rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.45 }}>
+              Page {(flipping ? targetIdx : idx)+1} of {SPREADS.length}
+            </span>
           </div>
-        )}
+          <h2 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(1.2rem, 2.5vw, 2rem)', lineHeight: 1.1, marginBottom: '4px' }}>
+            {(flipping ? tgt : curr).headline}
+          </h2>
+          <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.78rem', lineHeight: 1.4, opacity: 0.6, fontStyle: 'italic', marginBottom: '10px' }}>
+            {(flipping ? tgt : curr).subhead}
+          </p>
+        </div>
 
         {/* ── Body ──────────────────────────────────────────── */}
         <div ref={bodyRef} style={{

@@ -4,6 +4,7 @@ import { ThemeToggle } from './ThemeToggle'
 const LINKS = [
   { to: '/',       label: 'Home' },
   { to: '/news',   label: 'News' },
+  { to: '/quiz',   label: 'Quick Rounds' },
   { to: '/design', label: 'Design' },
 ]
 

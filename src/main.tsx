@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import Home from './pages/Home'
 import News from './pages/News'
+import Quiz from './pages/Quiz'
 import Design from './pages/Design'
 import { Nav } from './components/Nav'
 
@@ -21,6 +22,7 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/" element={<Layout><Home /></Layout>} />
         <Route path="/news" element={<Layout><News /></Layout>} />
+        <Route path="/quiz" element={<Layout><Quiz /></Layout>} />
         <Route path="/design" element={<Layout><Design /></Layout>} />
       </Routes>
     </BrowserRouter>

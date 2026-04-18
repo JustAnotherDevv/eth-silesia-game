@@ -691,8 +691,9 @@ function Step5Complete({ name, avatarIdx, orgId, goals, isAdmin, newCommunityNam
   const org      = ORGS.find(o => o.id === orgId)
   const orgName  = isAdmin ? newCommunityName : (org ? org.name : orgId.replace('CUSTOM_', ''))
 
-  // Persist admin state on mount
+  // Persist completion + admin state on mount
   React.useEffect(() => {
+    localStorage.setItem('xp_onboarded', 'true')
     if (isAdmin) {
       localStorage.setItem('xp_is_admin', 'true')
       localStorage.setItem('xp_community_name', newCommunityName)

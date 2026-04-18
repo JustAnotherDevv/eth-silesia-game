@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
-import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import './index.css'
 import Home from './pages/Home'
 import News from './pages/News'
@@ -17,29 +16,41 @@ import MemberProfile from './pages/MemberProfile'
 import AdminPanel from './pages/AdminPanel'
 import { Nav } from './components/Nav'
 
-function Layout({ children }: { children: React.ReactNode }) {
-  return <>
-    <Nav />
-    {children}
-  </>
+function ProtectedLayout() {
+  const onboarded = localStorage.getItem('xp_onboarded') === 'true'
+  if (!onboarded) return <Navigate to="/onboarding" replace />
+  return (
+    <>
+      <Nav />
+      <Outlet />
+    </>
+  )
+}
+
+function OnboardingRoute() {
+  const onboarded = localStorage.getItem('xp_onboarded') === 'true'
+  if (onboarded) return <Navigate to="/" replace />
+  return <Onboarding />
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout><Home /></Layout>} />
-        <Route path="/news" element={<Layout><News /></Layout>} />
-        <Route path="/quiz" element={<Layout><Quiz /></Layout>} />
-        <Route path="/design" element={<Layout><Design /></Layout>} />
-        <Route path="/profile" element={<Layout><Profile /></Layout>} />
-        <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
-        <Route path="/decision" element={<Layout><Decision /></Layout>} />
-        <Route path="/path" element={<Layout><Path /></Layout>} />
-        <Route path="/community" element={<Layout><Community /></Layout>} />
-        <Route path="/community/:slug" element={<Layout><MemberProfile /></Layout>} />
-        <Route path="/admin" element={<Layout><AdminPanel /></Layout>} />
-        <Route path="/onboarding" element={<Onboarding />} />
+        <Route element={<ProtectedLayout />}>
+          <Route path="/"               element={<Home />} />
+          <Route path="/news"           element={<News />} />
+          <Route path="/quiz"           element={<Quiz />} />
+          <Route path="/design"         element={<Design />} />
+          <Route path="/profile"        element={<Profile />} />
+          <Route path="/leaderboard"    element={<Leaderboard />} />
+          <Route path="/decision"       element={<Decision />} />
+          <Route path="/path"           element={<Path />} />
+          <Route path="/community"      element={<Community />} />
+          <Route path="/community/:slug" element={<MemberProfile />} />
+          <Route path="/admin"          element={<AdminPanel />} />
+        </Route>
+        <Route path="/onboarding" element={<OnboardingRoute />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,

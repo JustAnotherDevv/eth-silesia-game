@@ -1041,14 +1041,15 @@ function LessonModal({
         position: 'fixed', inset: 0, zIndex: 200,
         background: 'rgba(26,8,0,0.72)',
         backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px',
       }}
       onClick={onClose}
     >
       <div
         style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%,-50%)',
-          maxWidth: '660px', width: 'calc(100% - 32px)',
+          width: '100%',
+          maxWidth: '660px',
           maxHeight: '90vh', overflowY: 'auto',
           background: paper,
           border: `4px solid ${ink}`,

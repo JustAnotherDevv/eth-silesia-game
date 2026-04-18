@@ -6,6 +6,8 @@ const LINKS = [
   { to: '/news',        label: 'News' },
   { to: '/quiz',        label: 'Quick Rounds' },
   { to: '/design',      label: 'Design' },
+  { to: '/path',        label: 'My Path' },
+  { to: '/decision',    label: 'Decision Room' },
 ]
 
 const RIGHT_LINKS = [

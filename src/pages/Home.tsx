@@ -27,7 +27,7 @@ const DEFAULT_PLAYER = { name: 'You', level: 1, xp: 0, xpMax: 500, streak: 0,
 const GAME_MODES_DATA = [
   { tag: 'QUICK ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Are You Smarter Than Your Bank Manager?',            body: 'Five rapid-fire questions. Thirty seconds each. Your financial IQ is about to be revealed.',             emoji: '🎯', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
   { tag: 'DECISION ROOM', kicker: 'EXCLUSIVE SCENARIO',  headline: 'Young Investor Faces Impossible Choice',             body: 'One scenario. Multiple paths. Real consequences. Enter the Decision Room and choose wisely.',          emoji: '🎲', accent: '#E63946', cta: 'Enter Room →',    href: '/decision' },
-  { tag: 'DAILY STREAK',  kicker: 'STREAK CHALLENGE',    headline: "The 30-Day Challenge That Changed One Investor's Life", body: "One challenge per day keeps financial ignorance at bay. Your streak multiplier is waiting.",          emoji: '🔥', accent: '#FF7B25', cta: 'Claim Reward →', href: '#'     },
+  { tag: 'CARTOON EPISODE', kicker: 'STORY-BASED LEARNING', headline: "Can You Survive the Financial Jungle Without Going Broke?", body: "Choose your character. Face real-life money dilemmas. Every choice matters — and your wallet feels it.", emoji: '🎬', accent: '#FF7B25', cta: 'Watch Episode →', href: '/episode' },
 ]
 
 // ─── Spread content for pages 2 & 3 ──────────────────────────
@@ -35,7 +35,8 @@ const GAME_MODES_DATA = [
 function PageGameModes() {
   const modes = [
     { tag: 'QUICK ROUNDS', kicker: 'KNOWLEDGE TEST', headline: 'Are You Smarter Than Your Bank Manager?', emoji: '🎯', accent: '#FFCD00', xp: '+80 XP', href: '/quiz' },
-    { tag: 'DECISION ROOM', kicker: 'SCENARIO', headline: 'Young Investor Faces Choice That Could Change Everything', emoji: '🎲', accent: '#E63946', xp: '+150 XP', href: '#' },
+    { tag: 'DECISION ROOM', kicker: 'SCENARIO', headline: 'Young Investor Faces Choice That Could Change Everything', emoji: '🎲', accent: '#E63946', xp: '+150 XP', href: '/decision' },
+    { tag: 'CARTOON EPISODE', kicker: 'STORY GAME', headline: 'Can You Survive the Financial Jungle Without Going Broke?', emoji: '🎬', accent: '#FF7B25', xp: '+200 XP', href: '/episode' },
   ]
   return (
     <div style={{ padding: '16px' }}>

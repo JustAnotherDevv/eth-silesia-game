@@ -17,6 +17,7 @@ import FraudSpotter from './pages/FraudSpotter'
 import Community from './pages/Community'
 import MemberProfile from './pages/MemberProfile'
 import AdminPanel from './pages/AdminPanel'
+import Episode from './pages/Episode'
 import { Nav } from './components/Nav'
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -44,6 +45,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/swipe" element={<Layout><Swipe /></Layout>} />
         <Route path="/fraud" element={<Layout><FraudSpotter /></Layout>} />
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/episode/:id?" element={<Episode />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,

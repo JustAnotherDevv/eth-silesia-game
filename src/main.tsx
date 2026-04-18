@@ -11,6 +11,7 @@ import Profile from './pages/Profile'
 import Leaderboard from './pages/Leaderboard'
 import Decision from './pages/Decision'
 import Path from './pages/Path'
+import Onboarding from './pages/Onboarding'
 import { Nav } from './components/Nav'
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
         <Route path="/decision" element={<Layout><Decision /></Layout>} />
         <Route path="/path" element={<Layout><Path /></Layout>} />
+        <Route path="/onboarding" element={<Onboarding />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,

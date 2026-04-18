@@ -5,7 +5,7 @@ export const users = new Hono()
 
 users.post('/', async (c) => {
   const body = await c.req.json()
-  const { username, displayName, avatar, orgId, goals } = body
+  const { id, username, displayName, avatar, orgId, goals } = body
 
   if (!username || !displayName) {
     return c.json({ error: 'username and displayName are required' }, 400)
@@ -22,14 +22,17 @@ users.post('/', async (c) => {
 
   if (existing) return c.json(existing)
 
+  const insertPayload: Record<string, unknown> = {
+    username: slug,
+    display_name: displayName,
+    avatar: avatar ?? '🎩',
+    goals: goals ?? [],
+  }
+  if (id) insertPayload.id = id
+
   const { data: user, error } = await supabase
     .from('users')
-    .insert({
-      username: slug,
-      display_name: displayName,
-      avatar: avatar ?? '🎩',
-      goals: goals ?? [],
-    })
+    .insert(insertPayload)
     .select()
     .single()
 

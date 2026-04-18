@@ -152,6 +152,7 @@ members.get('/:slug', async (c) => {
     location:       u.location,
     bio:            u.bio,
     goals:          u.goals,
+    joinedAt:       u.created_at,
     xpBreakdown,
     recentActivity,
     achievements,

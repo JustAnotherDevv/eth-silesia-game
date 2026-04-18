@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getUser, getUserGames, type User, type GameResult } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useAuth } from '../contexts/AuthContext'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -16,9 +18,9 @@ const surface = 'var(--rh-surface)'
 
 
 // ─── XP ring SVG ─────────────────────────────────────────────
-function XPRingSVG({ pct }: { pct: number }) {
+function XPRingSVG({ pct, xp, xpMax }: { pct: number; xp: number; xpMax: number }) {
   const r = 44, circ = 2 * Math.PI * r
-  const dash = circ * pct / 100
+  const dash = circ * Math.min(pct, 100) / 100
   return (
     <svg width="110" height="110" viewBox="0 0 110 110">
       <circle cx="55" cy="55" r={r} fill="none" stroke={surface} strokeWidth="10"/>
@@ -28,8 +30,8 @@ function XPRingSVG({ pct }: { pct: number }) {
       <circle cx="55" cy="55" r={r} fill="none" stroke="#1A0800" strokeWidth="3"
         strokeDasharray={`${dash + 1} ${circ - dash - 1}`} strokeDashoffset={circ * 0.25}
         strokeLinecap="round" opacity="0.35"/>
-      <text x="55" y="50" textAnchor="middle" fontFamily="'Fredoka One',cursive" fontSize="14" fill="var(--rh-ink)">340</text>
-      <text x="55" y="66" textAnchor="middle" fontFamily="'Fredoka Variable',sans-serif" fontWeight="700" fontSize="9" fill="var(--rh-ink)" opacity="0.55">/ 1000 XP</text>
+      <text x="55" y="50" textAnchor="middle" fontFamily="'Fredoka One',cursive" fontSize="14" fill="var(--rh-ink)">{xp}</text>
+      <text x="55" y="66" textAnchor="middle" fontFamily="'Fredoka Variable',sans-serif" fontWeight="700" fontSize="9" fill="var(--rh-ink)" opacity="0.55">/ {xpMax} XP</text>
     </svg>
   )
 }
@@ -111,10 +113,23 @@ const ACCENT_MAP: Record<string, string> = {
 
 const TABS = ['Overview', 'Badges', 'History', 'Settings']
 
+const XP_LEVELS = [
+  { min: 10000, label: 'Legend', xpMax: 15000 },
+  { min: 5000,  label: 'Expert', xpMax: 10000 },
+  { min: 2000,  label: 'Pro',    xpMax: 5000  },
+  { min: 500,   label: 'Rising', xpMax: 2000  },
+  { min: 0,     label: 'Rookie', xpMax: 500   },
+]
+function getXpMax(xp: number) {
+  return (XP_LEVELS.find(l => xp >= l.min) ?? XP_LEVELS[XP_LEVELS.length - 1]).xpMax
+}
+
 export default function Profile() {
   const [tab, setTab] = useState('Overview')
   const [user, setUser] = useState<User | null>(null)
   const [history, setHistory] = useState<GameResult[]>([])
+  const { signOut } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const session = getSession()
@@ -123,11 +138,16 @@ export default function Profile() {
     getUserGames(session.id).then(setHistory).catch(() => {})
   }, [])
 
+  async function handleSignOut() {
+    await signOut()
+    navigate('/onboarding')
+  }
+
   const PLAYER = {
     name: user?.display_name ?? 'Rookie Investor',
     level: 1,
     xp: user?.xp ?? 0,
-    xpMax: 1000,
+    xpMax: getXpMax(user?.xp ?? 0),
     streak: user?.streak ?? 0,
     badges: [] as string[],
     totalGames: history.length,
@@ -254,7 +274,7 @@ export default function Profile() {
 
             {/* XP ring */}
             <div style={{ flexShrink: 0, paddingTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-              <XPRingSVG pct={(PLAYER.xp / PLAYER.xpMax) * 100} />
+              <XPRingSVG pct={(PLAYER.xp / PLAYER.xpMax) * 100} xp={PLAYER.xp} xpMax={PLAYER.xpMax} />
               <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.5 }}>Progress</span>
             </div>
           </div>
@@ -452,16 +472,16 @@ export default function Profile() {
                 }}/>
               </div>
             ))}
-            <button style={{
-              fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', letterSpacing: '0.07em',
-              padding: '12px 28px', borderRadius: '9999px',
-              border: `2.5px solid ${ink}`, background: '#FFCD00', color: '#1A0800',
-              boxShadow: `4px 4px 0 ${ink}`, cursor: 'pointer', alignSelf: 'flex-start',
-              transition: 'transform 0.1s, box-shadow 0.1s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
-            >Save Changes →</button>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', letterSpacing: '0.07em', padding: '12px 28px', borderRadius: '9999px', border: `2.5px solid ${ink}`, background: '#FFCD00', color: '#1A0800', boxShadow: `4px 4px 0 ${ink}`, cursor: 'pointer', transition: 'transform 0.1s, box-shadow 0.1s' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
+              >Save Changes →</button>
+              <button onClick={handleSignOut} style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', letterSpacing: '0.07em', padding: '12px 28px', borderRadius: '9999px', border: `2.5px solid ${ink}`, background: '#E63946', color: 'white', boxShadow: `4px 4px 0 ${ink}`, cursor: 'pointer', transition: 'transform 0.1s, box-shadow 0.1s' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
+              >🚪 Log Out</button>
+            </div>
           </div>
         )}
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createUser } from '../lib/api'
+import { createUser, getUser } from '../lib/api'
 import { setSession } from '../lib/session'
+import { supabase } from '../lib/supabase'
 
 const ORG_DB_IDS: Record<string, string> = {
   ETH_SIL:  'eth-silesia',
@@ -141,6 +142,111 @@ function StepProgress({ step }: { step: number }) {
   )
 }
 
+// ── Landing screen ────────────────────────────────────────────
+
+function Landing({ onLogin, onSignup }: { onLogin(): void; onSignup(): void }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '12px 0 32px' }}>
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+        <ProfessorSVG />
+      </div>
+      <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.85rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#FFCD00', marginBottom: '6px', textShadow: `1px 1px 0 ${ink}` }}>Welcome to</p>
+      <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2.6rem, 8vw, 3.8rem)', lineHeight: 0.95, marginBottom: '16px', color: ink, textShadow: `4px 4px 0 #FFCD00, 7px 7px 0 ${ink}` }}>XP Gazette</h1>
+      <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.97rem', lineHeight: 1.65, opacity: 0.6, maxWidth: '340px', margin: '0 auto 32px' }}>
+        Level up your financial life, one lesson at a time.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '280px', margin: '0 auto' }}>
+        <button onClick={onSignup} style={{ ...btnBase, fontSize: '1.1rem', padding: '16px 52px', background: '#FFCD00', color: '#1A0800', boxShadow: `5px 5px 0 ${ink}` }}
+          onMouseEnter={e => lift(e, '7px 7px 0')} onMouseLeave={e => unlift(e, '5px 5px 0')}>
+          Create Account →
+        </button>
+        <button onClick={onLogin} style={{ ...btnBase, fontSize: '0.95rem', padding: '14px 40px', background: surface, color: ink, boxShadow: `3px 3px 0 ${ink}` }}
+          onMouseEnter={e => lift(e)} onMouseLeave={e => unlift(e)}>
+          Log In
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Login form ────────────────────────────────────────────────
+
+function LoginForm({ onBack }: { onBack(): void }) {
+  const navigate = useNavigate()
+  const [email,    setEmail]    = useState('')
+  const [password, setPassword] = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '13px 18px', boxSizing: 'border-box',
+    fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '1rem',
+    background: paper, border: `3px solid ${ink}`, borderRadius: '14px',
+    boxShadow: `3px 3px 0 ${ink}`, outline: 'none', color: ink,
+  }
+
+  async function handleLogin() {
+    if (!email || !password) { setError('Please fill in all fields.'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+      if (authError) { setError(authError.message); return }
+      const user = await getUser(data.user.id)
+      setSession({ id: user.id, username: user.username, displayName: user.display_name, avatar: user.avatar })
+      navigate('/')
+    } catch {
+      setError('Login failed. Check your email and password.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ paddingBottom: '8px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+        <span style={{ fontSize: '2.8rem' }}>🔑</span>
+        <h2 style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.75rem', margin: '8px 0 4px' }}>Welcome Back!</h2>
+        <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.85rem', opacity: 0.5, margin: 0 }}>Log in to continue your journey</p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
+        {[
+          { label: 'EMAIL',    value: email,    setter: setEmail,    type: 'email',    placeholder: 'your@email.com' },
+          { label: 'PASSWORD', value: password, setter: setPassword, type: 'password', placeholder: '••••••••' },
+        ].map(f => (
+          <div key={f.label}>
+            <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem', display: 'block', marginBottom: '6px', opacity: 0.6, letterSpacing: '0.1em' }}>{f.label}</label>
+            <input
+              type={f.type}
+              value={f.value}
+              onChange={e => f.setter(e.target.value)}
+              placeholder={f.placeholder}
+              style={inputStyle}
+              onKeyDown={e => { if (e.key === 'Enter') handleLogin() }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {error && (
+        <div style={{ padding: '10px 14px', background: 'rgba(230,57,70,0.1)', border: '2px solid #E63946', borderRadius: '10px', marginBottom: '16px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.82rem', color: '#E63946' }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <button onClick={onBack} style={{ ...btnBase, fontSize: '0.9rem', padding: '12px 24px', background: surface, color: ink, boxShadow: `3px 3px 0 ${ink}` }}
+          onMouseEnter={e => lift(e)} onMouseLeave={e => unlift(e)}>← Back</button>
+        <button onClick={handleLogin} disabled={loading} style={{ ...btnBase, fontSize: '0.9rem', padding: '12px 36px', background: '#2D9A4E', color: 'white', boxShadow: `3px 3px 0 ${ink}`, opacity: loading ? 0.6 : 1 }}
+          onMouseEnter={e => { if (!loading) lift(e) }} onMouseLeave={e => { if (!loading) unlift(e) }}>
+          {loading ? '⏳ Logging in…' : 'Log In →'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Step 1: Welcome ───────────────────────────────────────────
 
 function Step1Welcome({ onNext }: { onNext(): void }) {
@@ -188,12 +294,12 @@ function Step1Welcome({ onNext }: { onNext(): void }) {
 
 // ── Step 2: Identity ──────────────────────────────────────────
 
-function Step2Identity({ name, username, avatarIdx, onChange, onNext, onBack }: {
-  name: string; username: string; avatarIdx: number
+function Step2Identity({ name, username, avatarIdx, email, password, onChange, onNext, onBack }: {
+  name: string; username: string; avatarIdx: number; email: string; password: string
   onChange(k: string, v: unknown): void
   onNext(): void; onBack(): void
 }) {
-  const valid = name.trim().length > 0 && username.trim().length > 0
+  const valid = name.trim().length > 0 && username.trim().length > 0 && email.trim().length > 0 && password.length >= 6
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '13px 18px', boxSizing: 'border-box',
@@ -216,17 +322,20 @@ function Step2Identity({ name, username, avatarIdx, onChange, onNext, onBack }: 
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '22px' }}>
         {[
-          { key: 'name',     label: 'YOUR NAME',  placeholder: 'e.g. Alex',           transform: (v: string) => v },
-          { key: 'username', label: 'USERNAME',   placeholder: 'e.g. alex_investor',  transform: (v: string) => v.toLowerCase().replace(/[^a-z0-9_]/g, '') },
+          { key: 'name',     label: 'YOUR NAME',  placeholder: 'e.g. Alex',           value: name,     transform: (v: string) => v },
+          { key: 'username', label: 'USERNAME',   placeholder: 'e.g. alex_investor',  value: username, transform: (v: string) => v.toLowerCase().replace(/[^a-z0-9_]/g, '') },
+          { key: 'email',    label: 'EMAIL',      placeholder: 'your@email.com',       value: email,    transform: (v: string) => v },
+          { key: 'password', label: 'PASSWORD (min 6 chars)', placeholder: '••••••••', value: password, transform: (v: string) => v },
         ].map(f => (
           <div key={f.key}>
             <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem', display: 'block', marginBottom: '6px', opacity: 0.6, letterSpacing: '0.1em' }}>
               {f.label}
             </label>
             <input
-              value={f.key === 'name' ? name : username}
+              value={f.value}
               onChange={e => onChange(f.key, f.transform(e.target.value))}
               placeholder={f.placeholder}
+              type={f.key === 'password' ? 'password' : f.key === 'email' ? 'email' : 'text'}
               style={inputStyle}
             />
           </div>
@@ -692,13 +801,15 @@ function Step4Goals({ goals, onChange, onNext, onBack }: {
 
 // ── Step 5: Complete ──────────────────────────────────────────
 
-function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCommunityName, newCommunityEmoji, communityCode }: {
+function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCommunityName, newCommunityEmoji, communityCode, email, password }: {
   name: string; username: string; avatarIdx: number; orgId: string; goals: string[]
   isAdmin: boolean; newCommunityName: string; newCommunityEmoji: string; communityCode: string
+  email: string; password: string
 }) {
   const navigate = useNavigate()
   const org      = ORGS.find(o => o.id === orgId)
   const orgName  = isAdmin ? newCommunityName : (org ? org.name : orgId.replace('CUSTOM_', ''))
+  const [authErr, setAuthErr] = React.useState('')
 
   React.useEffect(() => {
     if (isAdmin) {
@@ -710,17 +821,26 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
       localStorage.removeItem('xp_is_admin')
     }
 
-    // Create user in API and persist session
-    const dbOrgId = ORG_DB_IDS[orgId]
-    createUser({
-      username,
-      displayName: name,
-      avatar: AVATARS[avatarIdx],
-      orgId: dbOrgId,
-      goals,
-    }).then(user => {
-      setSession({ id: user.id, username: user.username, displayName: user.display_name, avatar: user.avatar })
-    }).catch(() => {})
+    async function register() {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
+        if (authError) { setAuthErr(authError.message); return }
+        const authId = authData.user?.id
+        const dbOrgId = ORG_DB_IDS[orgId]
+        const user = await createUser({
+          id: authId,
+          username,
+          displayName: name,
+          avatar: AVATARS[avatarIdx],
+          orgId: dbOrgId,
+          goals,
+        })
+        setSession({ id: user.id, username: user.username, displayName: user.display_name, avatar: user.avatar })
+      } catch (err) {
+        setAuthErr('Account creation failed. Please try again.')
+      }
+    }
+    register()
   }, [])
 
   return (
@@ -747,6 +867,12 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
       }}>
         {AVATARS[avatarIdx]}
       </div>
+
+      {authErr && (
+        <div style={{ padding: '10px 14px', background: 'rgba(230,57,70,0.1)', border: '2px solid #E63946', borderRadius: '10px', marginBottom: '16px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.82rem', color: '#E63946', maxWidth: '340px', margin: '0 auto 16px' }}>
+          ⚠️ {authErr}
+        </div>
+      )}
 
       <h2 style={{
         fontFamily: "'Fredoka One', cursive",
@@ -831,6 +957,7 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
 
 interface Form {
   name: string; username: string; avatarIdx: number
+  email: string; password: string
   orgId: string; orgCode: string; goals: string[]
   isAdmin: boolean
   newCommunityName: string; newCommunityEmoji: string
@@ -839,12 +966,14 @@ interface Form {
 }
 
 export default function Onboarding() {
-  const [step, setStep]       = useState(0)
-  const [dir,  setDir]        = useState<'fwd' | 'back'>('fwd')
+  const [mode,    setMode]    = useState<'landing' | 'login' | 'signup'>('landing')
+  const [step,    setStep]    = useState(0)
+  const [dir,     setDir]     = useState<'fwd' | 'back'>('fwd')
   const [animKey, setAnimKey] = useState(0)
 
   const [form, setForm] = useState<Form>({
     name: '', username: '', avatarIdx: 0,
+    email: '', password: '',
     orgId: '', orgCode: '', goals: [],
     isAdmin: false,
     newCommunityName: '', newCommunityEmoji: '🌟',
@@ -856,9 +985,15 @@ export default function Onboarding() {
     setForm(f => ({ ...f, [k]: v }))
   }
   function next() { setDir('fwd');  setAnimKey(k => k + 1); setStep(s => s + 1) }
-  function back() { setDir('back'); setAnimKey(k => k + 1); setStep(s => s - 1) }
+  function back() {
+    setDir('back')
+    setAnimKey(k => k + 1)
+    if (step === 0) { setMode('landing') } else { setStep(s => s - 1) }
+  }
 
   const anim = dir === 'fwd' ? 'fly-in-right 0.32s ease both' : 'fly-in-left 0.32s ease both'
+
+  const showProgress = mode === 'signup'
 
   return (
     <div style={{
@@ -869,58 +1004,65 @@ export default function Onboarding() {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
     }}>
       <div style={{ width: '100%', maxWidth: '520px', padding: '0 20px' }}>
-        {/* Logo */}
-        <div style={{
-          padding: '18px 0 0', textAlign: 'center',
-          fontFamily: "'Fredoka One', cursive", fontSize: '0.95rem',
-          opacity: 0.45, color: ink, letterSpacing: '0.06em',
-        }}>★ XP Gazette</div>
-
-        <StepProgress step={step} />
+        <div style={{ padding: '18px 0 0', textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.95rem', opacity: 0.45, color: ink, letterSpacing: '0.06em' }}>★ XP Gazette</div>
+        {showProgress && <StepProgress step={step} />}
       </div>
 
       {/* Card */}
       <div style={{ width: '100%', maxWidth: '520px', padding: '0 16px 48px' }}>
-        <div style={{
-          background: paper, border: `3px solid ${ink}`,
-          borderRadius: '24px', padding: '28px 28px 24px',
-          boxShadow: `6px 6px 0 ${ink}`, overflow: 'hidden',
-        }}>
-          <div key={animKey} style={{ animation: anim }}>
-            {step === 0 && <Step1Welcome onNext={next} />}
-            {step === 1 && (
-              <Step2Identity
-                name={form.name} username={form.username} avatarIdx={form.avatarIdx}
-                onChange={update} onNext={next} onBack={back}
-              />
-            )}
-            {step === 2 && (
-              <Step3Organization
-                orgId={form.orgId} orgCode={form.orgCode}
-                newCommunityName={form.newCommunityName}
-                newCommunityEmoji={form.newCommunityEmoji}
-                newCommunityType={form.newCommunityType}
-                communityPublic={form.communityPublic}
-                onChange={update} onNext={next} onBack={back}
-              />
-            )}
-            {step === 3 && (
-              <Step4Goals
-                goals={form.goals}
-                onChange={update} onNext={next} onBack={back}
-              />
-            )}
-            {step === 4 && (
-              <Step5Complete
-                name={form.name} username={form.username} avatarIdx={form.avatarIdx}
-                orgId={form.orgId} goals={form.goals}
-                isAdmin={form.isAdmin}
-                newCommunityName={form.newCommunityName}
-                newCommunityEmoji={form.newCommunityEmoji}
-                communityCode={form.communityCode}
-              />
-            )}
-          </div>
+        <div style={{ background: paper, border: `3px solid ${ink}`, borderRadius: '24px', padding: '28px 28px 24px', boxShadow: `6px 6px 0 ${ink}`, overflow: 'hidden' }}>
+
+          {mode === 'landing' && (
+            <Landing
+              onLogin={() => { setMode('login'); setAnimKey(k => k + 1) }}
+              onSignup={() => { setMode('signup'); setStep(0); setAnimKey(k => k + 1) }}
+            />
+          )}
+
+          {mode === 'login' && (
+            <LoginForm onBack={() => { setMode('landing'); setAnimKey(k => k + 1) }} />
+          )}
+
+          {mode === 'signup' && (
+            <div key={animKey} style={{ animation: anim }}>
+              {step === 0 && <Step1Welcome onNext={next} />}
+              {step === 1 && (
+                <Step2Identity
+                  name={form.name} username={form.username} avatarIdx={form.avatarIdx}
+                  email={form.email} password={form.password}
+                  onChange={update} onNext={next} onBack={back}
+                />
+              )}
+              {step === 2 && (
+                <Step3Organization
+                  orgId={form.orgId} orgCode={form.orgCode}
+                  newCommunityName={form.newCommunityName}
+                  newCommunityEmoji={form.newCommunityEmoji}
+                  newCommunityType={form.newCommunityType}
+                  communityPublic={form.communityPublic}
+                  onChange={update} onNext={next} onBack={back}
+                />
+              )}
+              {step === 3 && (
+                <Step4Goals
+                  goals={form.goals}
+                  onChange={update} onNext={next} onBack={back}
+                />
+              )}
+              {step === 4 && (
+                <Step5Complete
+                  name={form.name} username={form.username} avatarIdx={form.avatarIdx}
+                  orgId={form.orgId} goals={form.goals}
+                  isAdmin={form.isAdmin}
+                  newCommunityName={form.newCommunityName}
+                  newCommunityEmoji={form.newCommunityEmoji}
+                  communityCode={form.communityCode}
+                  email={form.email} password={form.password}
+                />
+              )}
+            </div>
+          )}
+
         </div>
       </div>
     </div>

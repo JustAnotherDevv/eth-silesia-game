@@ -12,6 +12,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 // Users
 export const createUser = (data: {
+  id?: string
   username: string
   displayName: string
   avatar?: string

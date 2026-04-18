@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MEMBERS } from '../data/members'
+import { api } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -30,16 +31,40 @@ function copyText(text: string, setCopied: (s: string) => void) {
   setTimeout(() => setCopied(''), 1800)
 }
 
+// ── Types ──────────────────────────────────────────────────────
+
+interface CommunityStats {
+  id: string; name: string; emoji: string; type: string; isPublic: boolean
+  members: number; totalXp: number; totalBadges: number; primaryCode: string | null
+}
+
+interface ApiInviteCode {
+  id: string; code: string; uses: number; maxUses: number; active: boolean; createdAt: string
+}
+
+interface ApiMember {
+  id: string; name: string; username: string; email: string
+  avatarEmoji: string; xp: number; level: string; specialty: string
+  isAdmin: boolean; joinedAt: string
+}
+
+interface ApiModule {
+  id: string; emoji: string; title: string; description: string
+  lessons: number; published: boolean
+}
+
 // ── Overview tab ──────────────────────────────────────────────
 
-function TabOverview({ communityName, emoji, code }: { communityName: string; emoji: string; code: string }) {
+function TabOverview({ stats }: { stats: CommunityStats }) {
   const [copied, setCopied] = useState('')
-  const stats = [
-    { label: 'Total Members', value: MEMBERS.length, color: '#1565C0', icon: '👥' },
-    { label: 'Active Today',  value: Math.floor(MEMBERS.length * 0.6), color: '#2D9A4E', icon: '🟢' },
-    { label: 'Total XP Earned', value: MEMBERS.reduce((a, m) => a + m.xp, 0).toLocaleString(), color: '#FF7B25', icon: '⚡' },
-    { label: 'Badges Awarded', value: MEMBERS.reduce((a, m) => a + m.badges, 0), color: '#7B2D8B', icon: '🏅' },
+  const code = stats.primaryCode ?? ''
+  const statCards = [
+    { label: 'Total Members',    value: stats.members,                       color: '#1565C0', icon: '👥' },
+    { label: 'Active Today',     value: Math.max(1, Math.floor(stats.members * 0.6)), color: '#2D9A4E', icon: '🟢' },
+    { label: 'Total XP Earned',  value: stats.totalXp.toLocaleString(),      color: '#FF7B25', icon: '⚡' },
+    { label: 'Badges Awarded',   value: stats.totalBadges,                   color: '#7B2D8B', icon: '🏅' },
   ]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Community card */}
@@ -49,38 +74,39 @@ function TabOverview({ communityName, emoji, code }: { communityName: string; em
         boxShadow: `6px 6px 0 ${ink}`, padding: '24px',
         color: 'white', position: 'relative', overflow: 'hidden',
       }}>
-        <div style={{
-          position: 'absolute', top: '-20px', right: '-20px',
-          fontSize: '120px', opacity: 0.12, pointerEvents: 'none',
-        }}>{emoji}</div>
-        <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>{emoji}</div>
-        <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.5rem', marginBottom: '4px' }}>{communityName}</div>
+        <div style={{ position: 'absolute', top: '-20px', right: '-20px', fontSize: '120px', opacity: 0.12, pointerEvents: 'none' }}>
+          {stats.emoji}
+        </div>
+        <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>{stats.emoji}</div>
+        <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.5rem', marginBottom: '4px' }}>{stats.name}</div>
         <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.8rem', opacity: 0.7, marginBottom: '14px' }}>
-          You are the Admin · {MEMBERS.length} members
+          You are the Admin · {stats.members} members
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            fontFamily: "'Fredoka One', cursive", fontSize: '0.85rem',
-            background: 'rgba(255,255,255,0.15)', padding: '6px 14px',
-            borderRadius: '9999px', border: '1.5px solid rgba(255,255,255,0.3)',
-            letterSpacing: '0.14em',
-          }}>{code || 'NO-CODE'}</div>
-          <button
-            onClick={() => copyText(code, setCopied)}
-            style={{
-              ...btnBase, fontSize: '0.75rem', padding: '6px 14px',
-              borderRadius: '9999px', background: 'rgba(255,255,255,0.9)',
-              color: '#1A0800', boxShadow: `2px 2px 0 rgba(0,0,0,0.4)`,
-            }}
-          >
-            {copied === code ? '✓ Copied!' : '📋 Copy Code'}
-          </button>
-        </div>
+        {code && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              fontFamily: "'Fredoka One', cursive", fontSize: '0.85rem',
+              background: 'rgba(255,255,255,0.15)', padding: '6px 14px',
+              borderRadius: '9999px', border: '1.5px solid rgba(255,255,255,0.3)',
+              letterSpacing: '0.14em',
+            }}>{code}</div>
+            <button
+              onClick={() => copyText(code, setCopied)}
+              style={{
+                ...btnBase, fontSize: '0.75rem', padding: '6px 14px',
+                borderRadius: '9999px', background: 'rgba(255,255,255,0.9)',
+                color: '#1A0800', boxShadow: `2px 2px 0 rgba(0,0,0,0.4)`,
+              }}
+            >
+              {copied === code ? '✓ Copied!' : '📋 Copy Code'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        {stats.map(s => (
+        {statCards.map(s => (
           <div key={s.label} style={{
             background: paper, border: `3px solid ${ink}`,
             borderRadius: '16px', padding: '16px',
@@ -96,99 +122,47 @@ function TabOverview({ communityName, emoji, code }: { communityName: string; em
           </div>
         ))}
       </div>
-
-      {/* Quick actions */}
-      <div style={{
-        background: paper, border: `3px solid ${ink}`,
-        borderRadius: '16px', padding: '16px',
-        boxShadow: `4px 4px 0 ${ink}`,
-      }}>
-        <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.8rem', opacity: 0.45, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
-          Quick Actions
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {[
-            { label: '📨 Invite by Email', color: '#1565C0' },
-            { label: '🔑 Generate Code',   color: '#2D9A4E' },
-            { label: '📚 Add Content',     color: '#FF7B25' },
-          ].map(a => (
-            <button key={a.label} style={{
-              ...btnBase, fontSize: '0.78rem', padding: '8px 16px',
-              borderRadius: '9999px', background: a.color, color: 'white',
-              boxShadow: `3px 3px 0 ${ink}`,
-            }}
-            onMouseEnter={lift} onMouseLeave={unlift}>
-              {a.label}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
 
 // ── Invite Codes tab ──────────────────────────────────────────
 
-interface InviteCode { id: string; code: string; uses: number; maxUses: number; active: boolean; created: string }
+function TabInviteCodes() {
+  const [codes,   setCodes]   = useState<ApiInviteCode[]>([])
+  const [loading, setLoading] = useState(true)
+  const [copied,  setCopied]  = useState('')
 
-function TabInviteCodes({ primaryCode }: { primaryCode: string }) {
-  const [codes, setCodes] = useState<InviteCode[]>([
-    { id: '1', code: primaryCode || 'MAIN01', uses: 4,  maxUses: 50,  active: true,  created: '2026-04-15' },
-    { id: '2', code: 'WAVE2A',                uses: 12, maxUses: 20,  active: true,  created: '2026-04-12' },
-    { id: '3', code: 'BETA99',                uses: 20, maxUses: 20,  active: false, created: '2026-04-01' },
-  ])
-  const [copied, setCopied] = useState('')
-  const [email,  setEmail]  = useState('')
-  const [sent,   setSent]   = useState(false)
+  const load = useCallback(async () => {
+    try { setCodes(await api.get<ApiInviteCode[]>('/admin/invite-codes')) }
+    catch {}
+    finally { setLoading(false) }
+  }, [])
 
-  function generateCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-    const code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-    const newCode: InviteCode = { id: Date.now().toString(), code, uses: 0, maxUses: 25, active: true, created: new Date().toISOString().slice(0, 10) }
-    setCodes(c => [newCode, ...c])
+  useEffect(() => { load() }, [load])
+
+  async function generateCode() {
+    try {
+      const newCode = await api.post<ApiInviteCode>('/admin/invite-codes', { maxUses: 25 })
+      setCodes(c => [newCode, ...c])
+    } catch {}
   }
 
-  function revokeCode(id: string) {
-    setCodes(c => c.map(co => co.id === id ? { ...co, active: false } : co))
+  async function revokeCode(id: string) {
+    try {
+      await api.delete(`/admin/invite-codes/${id}`)
+      setCodes(c => c.map(co => co.id === id ? { ...co, active: false } : co))
+    } catch {}
   }
 
-  function sendInvite() {
-    if (!email.trim()) return
-    setSent(true)
-    setTimeout(() => { setSent(false); setEmail('') }, 2200)
-  }
+  if (loading) return (
+    <div style={{ textAlign: 'center', padding: 40, fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, opacity: 0.4 }}>
+      Loading…
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Invite by email */}
-      <div style={{ background: paper, border: `3px solid ${ink}`, borderRadius: '16px', padding: '16px', boxShadow: `4px 4px 0 ${ink}` }}>
-        <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.8rem', opacity: 0.45, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>
-          📨 Invite by Email
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="colleague@example.com"
-            type="email"
-            style={{
-              flex: 1, padding: '11px 16px',
-              fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.9rem',
-              background: surface, border: `2.5px solid ${ink}`, borderRadius: '12px',
-              boxShadow: `2px 2px 0 ${ink}`, outline: 'none', color: ink,
-            }}
-          />
-          <button onClick={sendInvite} style={{
-            ...btnBase, fontSize: '0.82rem', padding: '11px 20px',
-            borderRadius: '12px', background: sent ? '#2D9A4E' : '#1565C0',
-            color: 'white', boxShadow: `3px 3px 0 ${ink}`,
-          }}
-          onMouseEnter={lift} onMouseLeave={unlift}>
-            {sent ? '✓ Sent!' : 'Send →'}
-          </button>
-        </div>
-      </div>
-
       {/* Codes list */}
       <div style={{ background: paper, border: `3px solid ${ink}`, borderRadius: '16px', padding: '16px', boxShadow: `4px 4px 0 ${ink}` }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
@@ -222,13 +196,12 @@ function TabInviteCodes({ primaryCode }: { primaryCode: string }) {
                 {c.code}
               </div>
 
-              {/* Usage bar */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.62rem', opacity: 0.5 }}>
                   {c.uses}/{c.maxUses} used
                 </div>
                 <div style={{ height: '5px', borderRadius: '9999px', background: 'rgba(26,8,0,0.1)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', borderRadius: '9999px', width: `${(c.uses / c.maxUses) * 100}%`, background: c.uses >= c.maxUses ? '#E63946' : '#2D9A4E', transition: 'width 0.3s' }}/>
+                  <div style={{ height: '100%', borderRadius: '9999px', width: `${Math.min(100, (c.uses / c.maxUses) * 100)}%`, background: c.uses >= c.maxUses ? '#E63946' : '#2D9A4E', transition: 'width 0.3s' }}/>
                 </div>
               </div>
 
@@ -270,6 +243,12 @@ function TabInviteCodes({ primaryCode }: { primaryCode: string }) {
               )}
             </div>
           ))}
+
+          {codes.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.85rem', opacity: 0.4 }}>
+              No invite codes yet — generate one!
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -283,24 +262,40 @@ const LEVEL_COLOR: Record<string, string> = {
 }
 
 function TabMembers() {
-  const [members, setMembers] = useState(MEMBERS)
+  const [members, setMembers] = useState<ApiMember[]>([])
+  const [loading, setLoading] = useState(true)
   const [search,  setSearch]  = useState('')
-  const [removed, setRemoved] = useState<number[]>([])
-  const [confirm, setConfirm] = useState<number | null>(null)
+  const [confirm, setConfirm] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try { setMembers(await api.get<ApiMember[]>('/admin/members')) }
+    catch {}
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const filtered = members.filter(m =>
-    !removed.includes(m.id) &&
-    (m.name.toLowerCase().includes(search.toLowerCase()) ||
-     m.specialty.toLowerCase().includes(search.toLowerCase()))
+    m.name.toLowerCase().includes(search.toLowerCase()) ||
+    m.specialty.toLowerCase().includes(search.toLowerCase())
   )
 
-  function removeConfirm(id: number) { setConfirm(id) }
-  function removeCancel()             { setConfirm(null) }
-  function removeMember(id: number)   { setRemoved(r => [...r, id]); setConfirm(null) }
+  async function removeMember(userId: string) {
+    try {
+      await api.delete(`/admin/members/${userId}`)
+      setMembers(prev => prev.filter(m => m.id !== userId))
+    } catch {}
+    setConfirm(null)
+  }
+
+  if (loading) return (
+    <div style={{ textAlign: 'center', padding: 40, fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, opacity: 0.4 }}>
+      Loading…
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Search */}
       <input
         value={search}
         onChange={e => setSearch(e.target.value)}
@@ -313,7 +308,6 @@ function TabMembers() {
         }}
       />
 
-      {/* Members list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {filtered.map((m, i) => (
           <div key={m.id} style={{
@@ -324,48 +318,52 @@ function TabMembers() {
             animation: 'rh-animate-bounce-in 0.3s ease both',
             animationDelay: `${i * 0.03}s`, animationFillMode: 'both',
           }}>
-            {/* Avatar */}
             <div style={{
               width: 40, height: 40, borderRadius: '50%',
-              background: m.accent, border: `2px solid ${ink}`,
+              background: LEVEL_COLOR[m.level] ?? '#FF7B25', border: `2px solid ${ink}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1.2rem', flexShrink: 0,
-            }}>{m.avatar}</div>
+            }}>{m.avatarEmoji}</div>
 
-            {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                {m.isAdmin && (
+                  <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.55rem', padding: '1px 7px', borderRadius: '9999px', background: '#FFCD00', border: `1.5px solid ${ink}`, color: '#1A0800', whiteSpace: 'nowrap' }}>
+                    👑 ADMIN
+                  </span>
+                )}
                 <span style={{
                   fontFamily: "'Fredoka One', cursive", fontSize: '0.55rem',
                   padding: '1px 7px', borderRadius: '9999px',
-                  background: LEVEL_COLOR[m.level], border: `1.5px solid ${ink}`,
+                  background: LEVEL_COLOR[m.level] ?? '#FF7B25', border: `1.5px solid ${ink}`,
                   color: m.level === 'Legend' ? '#1A0800' : 'white',
                   whiteSpace: 'nowrap',
                 }}>{m.level}</span>
               </div>
               <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.68rem', opacity: 0.45, marginTop: '2px' }}>
-                {m.specialty} · {m.xp.toLocaleString()} XP · joined {m.joined}
+                {m.specialty} · {m.xp.toLocaleString()} XP · joined {new Date(m.joinedAt).toLocaleDateString()}
               </div>
             </div>
 
-            {/* Actions */}
             <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-              <Link to={`/community/${m.slug}`} style={{
+              <Link to={`/community/${m.username}`} style={{
                 fontFamily: "'Fredoka One', cursive", fontSize: '0.68rem',
                 padding: '6px 12px', borderRadius: '9999px',
                 border: `2px solid ${ink}`, background: surface, color: ink,
                 textDecoration: 'none', boxShadow: `2px 2px 0 ${ink}`,
                 display: 'inline-block',
               }}>View</Link>
-              <button
-                onClick={() => removeConfirm(m.id)}
-                style={{
-                  ...btnBase, fontSize: '0.68rem', padding: '6px 12px',
-                  borderRadius: '9999px', background: '#E63946', color: 'white',
-                  boxShadow: `2px 2px 0 ${ink}`,
-                }}
-              >Remove</button>
+              {!m.isAdmin && (
+                <button
+                  onClick={() => setConfirm(m.id)}
+                  style={{
+                    ...btnBase, fontSize: '0.68rem', padding: '6px 12px',
+                    borderRadius: '9999px', background: '#E63946', color: 'white',
+                    boxShadow: `2px 2px 0 ${ink}`,
+                  }}
+                >Remove</button>
+              )}
             </div>
           </div>
         ))}
@@ -377,14 +375,13 @@ function TabMembers() {
         )}
       </div>
 
-      {/* Confirm dialog */}
       {confirm !== null && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 500,
           background: 'rgba(26,8,0,0.7)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
         }}
-        onClick={removeCancel}>
+        onClick={() => setConfirm(null)}>
           <div onClick={e => e.stopPropagation()} style={{
             background: paper, border: `4px solid #E63946`, borderRadius: '20px',
             boxShadow: `8px 8px 0 ${ink}`, padding: '28px',
@@ -397,7 +394,7 @@ function TabMembers() {
               {members.find(m => m.id === confirm)?.name} will lose access to the community.
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-              <button onClick={removeCancel} style={{
+              <button onClick={() => setConfirm(null)} style={{
                 ...btnBase, fontSize: '0.9rem', padding: '11px 24px',
                 borderRadius: '9999px', background: surface, color: ink,
                 boxShadow: `3px 3px 0 ${ink}`,
@@ -417,19 +414,28 @@ function TabMembers() {
 
 // ── Settings tab ──────────────────────────────────────────────
 
-function TabSettings({ communityName, setCommunityName, communityEmoji, setCommunityEmoji, isPublic, setIsPublic }: {
-  communityName: string; setCommunityName: (v: string) => void
-  communityEmoji: string; setCommunityEmoji: (v: string) => void
-  isPublic: boolean; setIsPublic: (v: boolean) => void
+function TabSettings({ initialName, initialEmoji, initialIsPublic, onSaved }: {
+  initialName: string; initialEmoji: string; initialIsPublic: boolean
+  onSaved: () => void
 }) {
+  const [communityName,  setCommunityName]  = useState(initialName)
+  const [communityEmoji, setCommunityEmoji] = useState(initialEmoji)
+  const [isPublic, setIsPublic]             = useState(initialIsPublic)
   const [saved, setSaved] = useState(false)
+  const [err,   setErr]   = useState('')
+
   const EMOJIS = ['🌟', '🚀', '💡', '🏆', '🔮', '⚡', '🌿', '🎯', '💎', '🔥', '🌊', '🎪', '⛓️', '🏦', '🎓', '🦊']
 
-  function save() {
-    localStorage.setItem('xp_community_name', communityName)
-    localStorage.setItem('xp_community_emoji', communityEmoji)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  async function save() {
+    setErr('')
+    try {
+      await api.patch('/admin/settings', { name: communityName, emoji: communityEmoji, isPublic })
+      setSaved(true)
+      onSaved()
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : 'Failed to save')
+    }
   }
 
   return (
@@ -440,7 +446,6 @@ function TabSettings({ communityName, setCommunityName, communityEmoji, setCommu
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Name */}
           <div>
             <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', display: 'block', marginBottom: '6px', opacity: 0.5, letterSpacing: '0.08em' }}>COMMUNITY NAME</label>
             <input
@@ -456,7 +461,6 @@ function TabSettings({ communityName, setCommunityName, communityEmoji, setCommu
             />
           </div>
 
-          {/* Emoji */}
           <div>
             <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', display: 'block', marginBottom: '8px', opacity: 0.5, letterSpacing: '0.08em' }}>EMOJI</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -475,7 +479,6 @@ function TabSettings({ communityName, setCommunityName, communityEmoji, setCommu
             </div>
           </div>
 
-          {/* Public/Private */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderRadius: '12px', border: `2px solid ${ink}`, background: surface }}>
             <div>
               <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem' }}>
@@ -505,6 +508,12 @@ function TabSettings({ communityName, setCommunityName, communityEmoji, setCommu
             </button>
           </div>
 
+          {err && (
+            <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(230,57,70,0.1)', border: `1.5px solid #E63946`, fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.8rem', color: '#E63946' }}>
+              {err}
+            </div>
+          )}
+
           <button onClick={save} style={{
             ...btnBase, fontSize: '0.92rem', padding: '13px 0', width: '100%',
             borderRadius: '14px', background: saved ? '#2D9A4E' : '#FFCD00',
@@ -516,7 +525,6 @@ function TabSettings({ communityName, setCommunityName, communityEmoji, setCommu
         </div>
       </div>
 
-      {/* Danger zone */}
       <div style={{ background: paper, border: `3px solid #E63946`, borderRadius: '16px', padding: '20px', boxShadow: `4px 4px 0 #E63946` }}>
         <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.8rem', color: '#E63946', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
           ⚠️ Danger Zone
@@ -538,33 +546,49 @@ function TabSettings({ communityName, setCommunityName, communityEmoji, setCommu
 
 // ── Learning Content tab ──────────────────────────────────────
 
-interface Module { id: string; emoji: string; title: string; desc: string; lessons: number; published: boolean }
-
 function TabContent() {
-  const [modules, setModules] = useState<Module[]>([
-    { id: '1', emoji: '💸', title: 'Budgeting Basics',       desc: 'Track income, expenses, and build a habit', lessons: 5, published: true  },
-    { id: '2', emoji: '📈', title: 'Intro to Investing',     desc: 'Stocks, ETFs, and compound interest',       lessons: 8, published: true  },
-    { id: '3', emoji: '🛡️', title: 'Emergency Fund 101',    desc: 'Why 3–6 months matters',                   lessons: 3, published: false },
-    { id: '4', emoji: '🔥', title: 'FIRE Movement',          desc: 'Financial independence retire early path',  lessons: 6, published: false },
-  ])
-  const [adding, setAdding] = useState(false)
-  const [draft,  setDraft]  = useState({ emoji: '📚', title: '', desc: '' })
+  const [modules, setModules] = useState<ApiModule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [adding,  setAdding]  = useState(false)
+  const [draft,   setDraft]   = useState({ emoji: '📚', title: '', desc: '' })
 
-  function addModule() {
+  const load = useCallback(async () => {
+    try { setModules(await api.get<ApiModule[]>('/admin/modules')) }
+    catch {}
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function addModule() {
     if (!draft.title.trim()) return
-    const m: Module = { id: Date.now().toString(), ...draft, lessons: 0, published: false }
-    setModules(mods => [...mods, m])
-    setAdding(false)
-    setDraft({ emoji: '📚', title: '', desc: '' })
+    try {
+      const m = await api.post<ApiModule>('/admin/modules', { emoji: draft.emoji, title: draft.title, description: draft.desc })
+      setModules(mods => [...mods, m])
+      setAdding(false)
+      setDraft({ emoji: '📚', title: '', desc: '' })
+    } catch {}
   }
 
-  function togglePublish(id: string) {
-    setModules(mods => mods.map(m => m.id === id ? { ...m, published: !m.published } : m))
+  async function togglePublish(id: string, current: boolean) {
+    try {
+      const updated = await api.patch<ApiModule>(`/admin/modules/${id}`, { published: !current })
+      setModules(mods => mods.map(m => m.id === id ? updated : m))
+    } catch {}
   }
 
-  function removeModule(id: string) {
-    setModules(mods => mods.filter(m => m.id !== id))
+  async function removeModule(id: string) {
+    try {
+      await api.delete(`/admin/modules/${id}`)
+      setModules(mods => mods.filter(m => m.id !== id))
+    } catch {}
   }
+
+  if (loading) return (
+    <div style={{ textAlign: 'center', padding: 40, fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, opacity: 0.4 }}>
+      Loading…
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -582,7 +606,6 @@ function TabContent() {
         </button>
       </div>
 
-      {/* Add form */}
       {adding && (
         <div style={{
           background: paper, border: `3px solid #FF7B25`,
@@ -623,7 +646,6 @@ function TabContent() {
         </div>
       )}
 
-      {/* Module list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {modules.map(m => (
           <div key={m.id} style={{
@@ -642,12 +664,12 @@ function TabContent() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.9rem', marginBottom: '2px' }}>{m.title}</div>
               <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.68rem', opacity: 0.45 }}>
-                {m.desc} · {m.lessons} lessons
+                {m.description} · {m.lessons} lessons
               </div>
             </div>
 
             <button
-              onClick={() => togglePublish(m.id)}
+              onClick={() => togglePublish(m.id, m.published)}
               style={{
                 fontFamily: "'Fredoka One', cursive", fontSize: '0.62rem',
                 padding: '5px 12px', borderRadius: '9999px',
@@ -670,6 +692,12 @@ function TabContent() {
             >✕</button>
           </div>
         ))}
+
+        {modules.length === 0 && !adding && (
+          <div style={{ textAlign: 'center', padding: 32, fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.85rem', opacity: 0.4 }}>
+            No modules yet — add one above!
+          </div>
+        )}
       </div>
     </div>
   )
@@ -680,29 +708,34 @@ function TabContent() {
 type Tab = 'overview' | 'codes' | 'members' | 'settings' | 'content'
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'overview', label: 'Overview',  icon: '🏠' },
-  { key: 'codes',    label: 'Codes',     icon: '🔑' },
-  { key: 'members',  label: 'Members',   icon: '👥' },
-  { key: 'settings', label: 'Settings',  icon: '⚙️' },
-  { key: 'content',  label: 'Content',   icon: '📚' },
+  { key: 'overview', label: 'Overview', icon: '🏠' },
+  { key: 'codes',    label: 'Codes',    icon: '🔑' },
+  { key: 'members',  label: 'Members',  icon: '👥' },
+  { key: 'settings', label: 'Settings', icon: '⚙️' },
+  { key: 'content',  label: 'Content',  icon: '📚' },
 ]
 
 export default function AdminPanel() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>('overview')
+  const { user, isAdmin, isLoading, refreshUser } = useAuth()
+  const [tab,   setTab]   = useState<Tab>('overview')
+  const [stats, setStats] = useState<CommunityStats | null>(null)
 
-  const [communityName,  setCommunityName]  = useState(() => localStorage.getItem('xp_community_name')  ?? 'My Community')
-  const [communityEmoji, setCommunityEmoji] = useState(() => localStorage.getItem('xp_community_emoji') ?? '🌟')
-  const [communityCode]                     = useState(() => localStorage.getItem('xp_community_code')  ?? '')
-  const [isPublic, setIsPublic]             = useState(false)
-
-  // Guard: only accessible to admin
-  const isAdmin = localStorage.getItem('xp_is_admin') === 'true'
   useEffect(() => {
-    if (!isAdmin) navigate('/', { replace: true })
-  }, [isAdmin, navigate])
+    if (!isLoading && !isAdmin) navigate('/', { replace: true })
+  }, [isLoading, isAdmin, navigate])
 
-  if (!isAdmin) return null
+  const fetchStats = useCallback(async () => {
+    try { setStats(await api.get<CommunityStats>('/admin/community')) }
+    catch {}
+  }, [])
+
+  useEffect(() => { if (isAdmin) fetchStats() }, [isAdmin, fetchStats])
+
+  if (isLoading || !isAdmin || !user) return null
+
+  const communityName  = stats?.name  ?? user.communityName  ?? 'My Community'
+  const communityEmoji = stats?.emoji ?? user.communityEmoji ?? '🌟'
 
   return (
     <div style={{
@@ -720,14 +753,11 @@ export default function AdminPanel() {
         padding: '24px 20px 80px',
         position: 'relative', overflow: 'hidden',
       }}>
-        {/* Dot pattern overlay */}
         <div style={{
           position: 'absolute', inset: 0, opacity: 0.12,
           backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
           backgroundSize: '16px 16px',
         }}/>
-
-        {/* Decorative blob */}
         <div style={{
           position: 'absolute', right: '-40px', top: '-40px',
           width: '220px', height: '220px', borderRadius: '50%',
@@ -773,9 +803,11 @@ export default function AdminPanel() {
                   background: 'rgba(255,205,0,0.9)', color: '#1A0800',
                   border: '1.5px solid rgba(0,0,0,0.2)',
                 }}>👑 ADMIN</span>
-                <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)' }}>
-                  {MEMBERS.length} members
-                </span>
+                {stats && (
+                  <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)' }}>
+                    {stats.members} members
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -813,14 +845,18 @@ export default function AdminPanel() {
 
       {/* Tab content */}
       <div style={{ maxWidth: '680px', margin: '20px auto 0', padding: '0 16px' }}>
-        {tab === 'overview' && <TabOverview communityName={communityName} emoji={communityEmoji} code={communityCode} />}
-        {tab === 'codes'    && <TabInviteCodes primaryCode={communityCode} />}
+        {tab === 'overview' && stats  && <TabOverview stats={stats} />}
+        {tab === 'overview' && !stats && (
+          <div style={{ textAlign: 'center', padding: 40, fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, opacity: 0.4 }}>Loading…</div>
+        )}
+        {tab === 'codes'    && <TabInviteCodes />}
         {tab === 'members'  && <TabMembers />}
         {tab === 'settings' && (
           <TabSettings
-            communityName={communityName} setCommunityName={setCommunityName}
-            communityEmoji={communityEmoji} setCommunityEmoji={setCommunityEmoji}
-            isPublic={isPublic} setIsPublic={setIsPublic}
+            initialName={communityName}
+            initialEmoji={communityEmoji}
+            initialIsPublic={stats?.isPublic ?? false}
+            onSaved={async () => { await refreshUser(); await fetchStats() }}
           />
         )}
         {tab === 'content'  && <TabContent />}

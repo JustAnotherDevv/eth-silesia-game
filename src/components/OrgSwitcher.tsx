@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { api } from '../lib/api'
 
 const ink   = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
@@ -32,7 +34,7 @@ export function OrgSwitcher() {
   const [codeState, setCodeState] = useState<'idle' | 'finding' | 'found'>('idle')
   const [foundOrg,  setFoundOrg]  = useState<Org | null>(null)
 
-  const isAdmin = localStorage.getItem('xp_is_admin') === 'true'
+  const { isAdmin, refreshUser } = useAuth()
 
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -64,13 +66,19 @@ export function OrgSwitcher() {
         color: '#7B2D8B', emoji: '🔒', members: 1,
       }
       setFoundOrg(org); setPickId(org.id); setCodeState('found')
-    }, 1000)
+    }, 600)
   }
 
-  function doJoin() {
-    const org = tab === 'public'
-      ? PUBLIC_ORGS.find(o => o.id === pickId)
-      : foundOrg
+  async function doJoin() {
+    if (tab === 'code' && foundOrg) {
+      try {
+        await api.post('/community/join', { code: code.trim().toUpperCase() })
+        await refreshUser()
+      } catch { /* swallow — user may already be a member */ }
+      setModal(false)
+      return
+    }
+    const org = PUBLIC_ORGS.find(o => o.id === pickId)
     if (!org) return
     setJoined(prev => prev.some(j => j.id === org.id) ? prev : [...prev, org])
     setCurrentId(org.id)

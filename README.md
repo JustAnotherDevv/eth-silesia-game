@@ -1,73 +1,96 @@
-# React + TypeScript + Vite
+# XP Gazette
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Gamified financial literacy platform with communities, quizzes, leaderboards, and learning paths. Built with a rubber-hose comic aesthetic.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**Frontend:** React 19 + TypeScript + Vite 8 + React Router v7  
+**Backend:** Fastify 4 + Prisma 5 + SQLite  
+**Auth:** JWT (`@fastify/jwt`) + bcryptjs password hashing
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Frontend
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Backend
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd server
+npm install
+cp .env.example .env   # edit JWT_SECRET before deploying
+npm run db:migrate
+npm run db:seed
+npm run dev            # http://localhost:3001
 ```
+
+### 3. Run both together (from root)
+
+```bash
+npm install          # installs concurrently
+npm run dev:all      # starts Vite + Fastify simultaneously
+```
+
+## Environment Variables
+
+All server config lives in `server/.env` (gitignored).
+
+| Variable       | Default                       | Description                          |
+|----------------|-------------------------------|--------------------------------------|
+| `DATABASE_URL` | `file:./dev.db`               | Prisma SQLite URL                    |
+| `JWT_SECRET`   | *(required — no default)*     | Secret for signing JWTs, ≥32 chars   |
+| `PORT`         | `3001`                        | API server port                      |
+
+Copy `server/.env.example` and set at minimum `JWT_SECRET`.
+
+## Seed Accounts
+
+After running `npm run db:seed` in the `server` directory:
+
+| Email                    | Password      | Role               |
+|--------------------------|---------------|--------------------|
+| `admin@xpgazette.dev`    | `admin123`    | Admin (ETH Silesia DAO) |
+| `alice@example.com`      | `password123` | Member              |
+| `bob@example.com`        | `password123` | Member              |
+
+## API Routes
+
+| Method | Path                         | Auth     | Description                       |
+|--------|------------------------------|----------|-----------------------------------|
+| POST   | `/api/auth/signup`           | —        | Register + optional community     |
+| POST   | `/api/auth/login`            | —        | Login, returns JWT                |
+| GET    | `/api/auth/me`               | JWT      | Current user                      |
+| GET    | `/api/community`             | —        | List public communities           |
+| POST   | `/api/community/join`        | JWT      | Join via invite code              |
+| GET    | `/api/admin/community`       | JWT+Admin| Community stats                   |
+| GET    | `/api/admin/invite-codes`    | JWT+Admin| List invite codes                 |
+| POST   | `/api/admin/invite-codes`    | JWT+Admin| Generate new code                 |
+| DELETE | `/api/admin/invite-codes/:id`| JWT+Admin| Revoke code                       |
+| GET    | `/api/admin/members`         | JWT+Admin| List community members            |
+| DELETE | `/api/admin/members/:userId` | JWT+Admin| Remove member                     |
+| PATCH  | `/api/admin/settings`        | JWT+Admin| Update community settings         |
+| GET    | `/api/admin/modules`         | JWT+Admin| List learning modules             |
+| POST   | `/api/admin/modules`         | JWT+Admin| Create module                     |
+| PATCH  | `/api/admin/modules/:id`     | JWT+Admin| Update / publish module           |
+| DELETE | `/api/admin/modules/:id`     | JWT+Admin| Delete module                     |
+
+## Frontend Routes
+
+| Path                   | Description                              |
+|------------------------|------------------------------------------|
+| `/onboarding`          | Signup / login flow                      |
+| `/`                    | Home dashboard                           |
+| `/news`                | Financial news                           |
+| `/quiz`                | Quick rounds quiz                        |
+| `/design`              | Design sandbox                           |
+| `/path`                | Learning path                            |
+| `/decision`            | Decision room                            |
+| `/community`           | Member grid                              |
+| `/community/:username` | Individual member profile                |
+| `/leaderboard`         | XP leaderboard                           |
+| `/profile`             | Your profile                             |
+| `/admin`               | Admin panel (community admin only)       |

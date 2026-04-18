@@ -12,6 +12,9 @@ import Leaderboard from './pages/Leaderboard'
 import Decision from './pages/Decision'
 import Path from './pages/Path'
 import Onboarding from './pages/Onboarding'
+import Community from './pages/Community'
+import MemberProfile from './pages/MemberProfile'
+import AdminPanel from './pages/AdminPanel'
 import { Nav } from './components/Nav'
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -33,6 +36,9 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
         <Route path="/decision" element={<Layout><Decision /></Layout>} />
         <Route path="/path" element={<Layout><Path /></Layout>} />
+        <Route path="/community" element={<Layout><Community /></Layout>} />
+        <Route path="/community/:slug" element={<Layout><MemberProfile /></Layout>} />
+        <Route path="/admin" element={<Layout><AdminPanel /></Layout>} />
         <Route path="/onboarding" element={<Onboarding />} />
       </Routes>
     </BrowserRouter>

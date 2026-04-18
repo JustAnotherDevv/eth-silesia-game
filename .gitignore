@@ -7,18 +7,59 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+.pnp
+.pnp.js
+
+# Build output
 dist
 dist-ssr
+build
+out
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Local config
 *.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage
+.vitest-cache
+
+# Cache
+.cache
+.turbo
+.vite
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deployment
+.vercel
+.netlify
+
+# Secrets / certs
+*.pem
+*.key
+*.cert
+
+# Claude AI tooling
+.claude

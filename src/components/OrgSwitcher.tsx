@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 const ink   = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
@@ -30,6 +31,8 @@ export function OrgSwitcher() {
   const [code,      setCode]      = useState('')
   const [codeState, setCodeState] = useState<'idle' | 'finding' | 'found'>('idle')
   const [foundOrg,  setFoundOrg]  = useState<Org | null>(null)
+
+  const isAdmin = localStorage.getItem('xp_is_admin') === 'true'
 
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -146,6 +149,46 @@ export function OrgSwitcher() {
                 </button>
               ))}
             </div>
+
+            <div style={{ borderTop: `2px solid color-mix(in srgb, ${ink} 10%, transparent)`, margin: '2px 0' }}/>
+
+            {/* Admin panel link — only visible to admin */}
+            {isAdmin && (
+              <>
+                <div style={{ borderTop: `2px solid color-mix(in srgb, ${ink} 10%, transparent)`, margin: '2px 0' }}/>
+                <div style={{ padding: '4px 10px 2px' }}>
+                  <Link
+                    to="/admin"
+                    onClick={() => setOpen(false)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      width: '100%', padding: '7px 8px', borderRadius: 10,
+                      border: 'none', cursor: 'pointer', textAlign: 'left',
+                      background: 'rgba(123,45,139,0.1)',
+                      fontFamily: "'Fredoka One', cursive", fontSize: '0.78rem',
+                      color: '#7B2D8B', textDecoration: 'none',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(123,45,139,0.2)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(123,45,139,0.1)'}
+                  >
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: '#7B2D8B', border: `2px solid ${ink}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.82rem', flexShrink: 0,
+                    }}>⚙️</div>
+                    <div>
+                      <div style={{ fontSize: '0.78rem' }}>Admin Panel</div>
+                      <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.58rem', opacity: 0.55, color: ink }}>
+                        Manage your community
+                      </div>
+                    </div>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.65rem', opacity: 0.5 }}>→</span>
+                  </Link>
+                </div>
+              </>
+            )}
 
             <div style={{ borderTop: `2px solid color-mix(in srgb, ${ink} 10%, transparent)`, margin: '2px 0' }}/>
 

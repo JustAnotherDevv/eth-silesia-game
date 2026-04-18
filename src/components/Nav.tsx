@@ -10,6 +10,7 @@ const LINKS = [
   { to: '/design',      label: 'Design' },
   { to: '/path',        label: 'My Path' },
   { to: '/decision',    label: 'Decision Room' },
+  { to: '/community',   label: 'Community' },
 ]
 
 const RIGHT_LINKS = [

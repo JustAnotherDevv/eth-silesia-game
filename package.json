@@ -10,7 +10,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "test:e2e": "tsx scripts/e2e.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",

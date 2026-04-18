@@ -39,7 +39,10 @@ leaderboard.get('/', async (c) => {
   if (error) return c.json({ error: error.message }, 500)
 
   return c.json(
-    (data ?? []).map((u, i) => ({ ...u, rank: i + 1, ...getLevel(u.xp) }))
+    (data ?? []).map((u, i) => {
+      const lvl = getLevel(u.xp)
+      return { ...u, rank: i + 1, level: lvl.label, accent: lvl.color, xpMax: lvl.xpMax }
+    })
   )
 })
 

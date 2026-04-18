@@ -18,6 +18,7 @@ import Community from './pages/Community'
 import MemberProfile from './pages/MemberProfile'
 import AdminPanel from './pages/AdminPanel'
 import Episode from './pages/Episode'
+import EpisodeNew from './pages/EpisodeNew'
 import { Nav } from './components/Nav'
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/fraud" element={<Layout><FraudSpotter /></Layout>} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/episode/:id?" element={<Episode />} />
+        <Route path="/episode-new" element={<EpisodeNew />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,

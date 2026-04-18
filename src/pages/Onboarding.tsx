@@ -1,5 +1,14 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createUser } from '../lib/api'
+import { setSession } from '../lib/session'
+
+const ORG_DB_IDS: Record<string, string> = {
+  ETH_SIL:  'eth-silesia',
+  PKO_BANK: 'pko-bank',
+  WAW_UNI:  'warsaw-uni',
+  FINTECH:  'fintech-hub',
+}
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -683,15 +692,14 @@ function Step4Goals({ goals, onChange, onNext, onBack }: {
 
 // ── Step 5: Complete ──────────────────────────────────────────
 
-function Step5Complete({ name, avatarIdx, orgId, goals, isAdmin, newCommunityName, newCommunityEmoji, communityCode }: {
-  name: string; avatarIdx: number; orgId: string; goals: string[]
+function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCommunityName, newCommunityEmoji, communityCode }: {
+  name: string; username: string; avatarIdx: number; orgId: string; goals: string[]
   isAdmin: boolean; newCommunityName: string; newCommunityEmoji: string; communityCode: string
 }) {
   const navigate = useNavigate()
   const org      = ORGS.find(o => o.id === orgId)
   const orgName  = isAdmin ? newCommunityName : (org ? org.name : orgId.replace('CUSTOM_', ''))
 
-  // Persist admin state on mount
   React.useEffect(() => {
     if (isAdmin) {
       localStorage.setItem('xp_is_admin', 'true')
@@ -701,6 +709,18 @@ function Step5Complete({ name, avatarIdx, orgId, goals, isAdmin, newCommunityNam
     } else {
       localStorage.removeItem('xp_is_admin')
     }
+
+    // Create user in API and persist session
+    const dbOrgId = ORG_DB_IDS[orgId]
+    createUser({
+      username,
+      displayName: name,
+      avatar: AVATARS[avatarIdx],
+      orgId: dbOrgId,
+      goals,
+    }).then(user => {
+      setSession({ id: user.id, username: user.username, displayName: user.display_name, avatar: user.avatar })
+    }).catch(() => {})
   }, [])
 
   return (
@@ -892,7 +912,7 @@ export default function Onboarding() {
             )}
             {step === 4 && (
               <Step5Complete
-                name={form.name} avatarIdx={form.avatarIdx}
+                name={form.name} username={form.username} avatarIdx={form.avatarIdx}
                 orgId={form.orgId} goals={form.goals}
                 isAdmin={form.isAdmin}
                 newCommunityName={form.newCommunityName}

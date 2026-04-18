@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { MEMBERS } from '../data/members'
-import type { Member } from '../data/members'
+import { getMembers, getMember } from '../lib/api'
+import type { ApiMember } from '../lib/api'
+import { getSession } from '../lib/session'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -9,12 +10,13 @@ const surface = 'var(--rh-surface)'
 
 const LEVEL_COLORS: Record<string, string> = {
   Legend: '#FFCD00',
-  Expert: '#1565C0',
-  Pro:    '#2D9A4E',
+  Expert: '#7B2D8B',
+  Pro:    '#1565C0',
+  Rising: '#2D9A4E',
   Rookie: '#E63946',
 }
 
-const FILTERS = ['All', 'Legend', 'Expert', 'Pro', 'Rookie', 'Online Now']
+const FILTERS = ['All', 'Legend', 'Expert', 'Pro', 'Rising', 'Rookie', 'Online Now']
 
 // ─── Hero SVG ────────────────────────────────────────────────────
 function CommunityHeroSVG() {
@@ -71,9 +73,10 @@ function CommunityHeroSVG() {
 }
 
 // ─── Member Card ──────────────────────────────────────────────────
-function MemberCard({ member, index, onSelect }: { member: Member; index: number; onSelect: () => void }) {
-  const lc   = LEVEL_COLORS[member.level]
-  const xpPct = Math.round((member.xp / member.xpMax) * 100)
+function MemberCard({ member, index, onSelect }: { member: ApiMember; index: number; onSelect: () => void }) {
+  const lc    = LEVEL_COLORS[member.level] ?? '#E63946'
+  const xpMax = member.xpMax ?? member.xp
+  const xpPct = xpMax > 0 ? Math.round((member.xp / xpMax) * 100) : 100
   const isLight = member.level === 'Legend'
 
   return (
@@ -164,7 +167,7 @@ function MemberCard({ member, index, onSelect }: { member: Member; index: number
       <div style={{
         fontFamily:"'Fredoka One', cursive", fontSize:'1rem',
         textAlign:'center', lineHeight:1.2, marginBottom:'3px',
-      }}>{member.name}</div>
+      }}>{member.displayName}</div>
 
       {/* Location + specialty */}
       <div style={{
@@ -181,7 +184,7 @@ function MemberCard({ member, index, onSelect }: { member: Member; index: number
         {[
           { label:'XP',       val: member.xp >= 1000 ? `${(member.xp/1000).toFixed(1)}k` : String(member.xp) },
           { label:'🔥 Streak', val: String(member.streak) },
-          { label:'🏆 Badges', val: String(member.badges) },
+          { label:'🏆 Badges', val: String(member.badgeCount) },
         ].map(s => (
           <div key={s.label} style={{ textAlign:'center' }}>
             <div style={{ fontFamily:"'Fredoka One', cursive", fontSize:'0.92rem' }}>{s.val}</div>
@@ -204,17 +207,28 @@ function MemberCard({ member, index, onSelect }: { member: Member; index: number
       <div style={{
         fontFamily:"'Fredoka Variable', sans-serif", fontWeight:700,
         fontSize:'0.46rem', textAlign:'right', opacity:0.38, marginTop:'3px',
-      }}>{xpPct}% to next level</div>
+      }}>{member.xpMax ? `${xpPct}% to next level` : 'MAX LEVEL'}</div>
     </div>
   )
 }
 
 // ─── Profile Modal ────────────────────────────────────────────────
-function ProfileModal({ member, onClose }: { member: Member; onClose: () => void }) {
-  const lc     = LEVEL_COLORS[member.level]
-  const xpPct  = Math.round((member.xp / member.xpMax) * 100)
-  const isLight = member.level === 'Legend'
+function ProfileModal({ base, detail, onClose }: {
+  base: ApiMember
+  detail: ApiMember | null
+  onClose: () => void
+}) {
+  const member = detail ?? base
+  const lc      = LEVEL_COLORS[member.level] ?? '#E63946'
+  const xpMax   = member.xpMax ?? member.xp
+  const xpPct   = xpMax > 0 ? Math.round((member.xp / xpMax) * 100) : 100
+  const isLight  = member.level === 'Legend'
   const textOnBanner = isLight ? '#1A0800' : '#FEF9EE'
+
+  const recentBadges = (member.achievements ?? []).map(a => `${a.emoji} ${a.name}`)
+  const joinedStr    = member.joinedAt
+    ? new Date(member.joinedAt).toLocaleDateString('en-US', { year:'numeric', month:'long' })
+    : 'Member'
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -282,7 +296,7 @@ function ProfileModal({ member, onClose }: { member: Member; onClose: () => void
             color: textOnBanner,
             textShadow: isLight ? `3px 3px 0 rgba(26,8,0,0.18)` : `2px 2px 0 rgba(0,0,0,0.3)`,
             marginBottom:'10px',
-          }}>{member.name}</div>
+          }}>{member.displayName}</div>
 
           {/* Pills row */}
           <div style={{ display:'flex', justifyContent:'center', gap:'6px', flexWrap:'wrap' }}>
@@ -332,7 +346,7 @@ function ProfileModal({ member, onClose }: { member: Member; onClose: () => void
                 letterSpacing:'0.1em', textTransform:'uppercase', opacity:0.55,
               }}>Experience Points</span>
               <span style={{ fontFamily:"'Fredoka One', cursive", fontSize:'0.9rem' }}>
-                {member.xp.toLocaleString()} / {member.xpMax.toLocaleString()} XP
+                {member.xp.toLocaleString()} {member.xpMax ? `/ ${member.xpMax.toLocaleString()} XP` : 'XP (MAX)'}
               </span>
             </div>
             <div style={{
@@ -348,7 +362,7 @@ function ProfileModal({ member, onClose }: { member: Member; onClose: () => void
             <div style={{
               fontFamily:"'Fredoka Variable', sans-serif", fontWeight:700,
               fontSize:'0.56rem', textAlign:'right', opacity:0.42, marginTop:'4px',
-            }}>{xpPct}% to next level</div>
+            }}>{member.xpMax ? `${xpPct}% to next level` : 'MAX LEVEL'}</div>
           </div>
 
           {/* Stats grid */}
@@ -356,10 +370,10 @@ function ProfileModal({ member, onClose }: { member: Member; onClose: () => void
             display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'8px', marginBottom:'20px',
           }}>
             {[
-              { emoji:'🏅', label:'Global Rank',   val:`#${member.rank}` },
-              { emoji:'🔥', label:'Day Streak',    val:`${member.streak}d` },
-              { emoji:'🎯', label:'Quizzes',       val:String(member.quizzes) },
-              { emoji:'👥', label:'Friends',       val:String(member.friends) },
+              { emoji:'🏅', label:'Global Rank',  val:`#${member.rank}` },
+              { emoji:'🔥', label:'Day Streak',   val:`${member.streak}d` },
+              { emoji:'🎯', label:'Games',        val: detail ? String(detail.gamesPlayed ?? 0) : '…' },
+              { emoji:'🏆', label:'Badges',       val: String(member.badgeCount) },
             ].map(s => (
               <div key={s.label} style={{
                 background:surface,
@@ -378,28 +392,30 @@ function ProfileModal({ member, onClose }: { member: Member; onClose: () => void
           </div>
 
           {/* Recent badges */}
-          <div style={{ marginBottom:'20px' }}>
-            <div style={{
-              fontFamily:"'Fredoka One', cursive", fontSize:'0.65rem',
-              letterSpacing:'0.14em', textTransform:'uppercase', opacity:0.5, marginBottom:'8px',
-            }}>★ Earned Badges</div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
-              {member.recentBadges.map((b, i) => (
-                <span key={i} style={{
-                  background:paper, border:`2px solid ${ink}`,
-                  boxShadow:`2px 2px 0 ${ink}`, borderRadius:'9999px',
-                  fontFamily:"'Fredoka Variable', sans-serif", fontWeight:700,
-                  fontSize:'0.68rem', padding:'4px 14px',
-                }}>{b}</span>
-              ))}
+          {recentBadges.length > 0 && (
+            <div style={{ marginBottom:'20px' }}>
+              <div style={{
+                fontFamily:"'Fredoka One', cursive", fontSize:'0.65rem',
+                letterSpacing:'0.14em', textTransform:'uppercase', opacity:0.5, marginBottom:'8px',
+              }}>★ Earned Badges</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+                {recentBadges.map((b, i) => (
+                  <span key={i} style={{
+                    background:paper, border:`2px solid ${ink}`,
+                    boxShadow:`2px 2px 0 ${ink}`, borderRadius:'9999px',
+                    fontFamily:"'Fredoka Variable', sans-serif", fontWeight:700,
+                    fontSize:'0.68rem', padding:'4px 14px',
+                  }}>{b}</span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Joined + specialty */}
           <div style={{
             fontFamily:"'Fredoka Variable', sans-serif", fontWeight:600,
             fontSize:'0.62rem', opacity:0.38, textAlign:'center', marginBottom:'20px',
-          }}>🗓️ Member since {member.joined} · Specialty: {member.specialty}</div>
+          }}>🗓️ Joined {joinedStr} · Specialty: {member.specialty}</div>
 
           {/* CTA buttons */}
           {!member.isYou ? (
@@ -436,7 +452,7 @@ function ProfileModal({ member, onClose }: { member: Member; onClose: () => void
             >✏️ Edit My Profile</a>
           )}
           {/* View Full Profile link */}
-          <Link to={`/community/${member.slug}`} onClick={onClose} style={{
+          <Link to={`/community/${member.username}`} onClick={onClose} style={{
             display:'block', textAlign:'center', marginTop:'10px',
             fontFamily:"'Fredoka One', cursive", fontSize:'0.74rem',
             letterSpacing:'0.08em', textTransform:'uppercase',
@@ -457,15 +473,35 @@ function ProfileModal({ member, onClose }: { member: Member; onClose: () => void
 
 // ─── Main page ────────────────────────────────────────────────────
 export default function Community() {
+  const [members,  setMembers]  = useState<ApiMember[]>([])
+  const [loading,  setLoading]  = useState(true)
   const [search,   setSearch]   = useState('')
   const [filter,   setFilter]   = useState('All')
-  const [selected, setSelected] = useState<Member | null>(null)
+  const [selected, setSelected] = useState<ApiMember | null>(null)
+  const [detail,   setDetail]   = useState<ApiMember | null>(null)
 
-  const onlineMembers = MEMBERS.filter(m => m.online)
+  const session = getSession()
 
-  const filtered = MEMBERS.filter(m => {
+  useEffect(() => {
+    getMembers({ limit: 100 })
+      .then(data => setMembers(data.map(m => ({ ...m, isYou: m.id === session?.id }))))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  function selectMember(m: ApiMember) {
+    setSelected(m)
+    setDetail(null)
+    getMember(m.username)
+      .then(d => setDetail({ ...d, isYou: d.id === session?.id }))
+      .catch(console.error)
+  }
+
+  const onlineMembers = members.filter(m => m.online)
+
+  const filtered = members.filter(m => {
     const q = search.toLowerCase()
-    const matchSearch = !q || m.name.toLowerCase().includes(q) || m.specialty.toLowerCase().includes(q)
+    const matchSearch = !q || m.displayName.toLowerCase().includes(q) || m.specialty.toLowerCase().includes(q)
     const matchFilter =
       filter === 'All'        ? true :
       filter === 'Online Now' ? !!m.online :
@@ -532,10 +568,8 @@ export default function Community() {
 
                 <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'16px' }}>
                   {[
-                    { label:'👥 Members',    val:'2,847' },
-                    { label:'🟢 Online Now', val:`${onlineMembers.length}` },
-                    { label:'🌍 Countries',  val:'24' },
-                    { label:'⚡ Avg XP',     val:'4.2k' },
+                    { label:'👥 Members',    val: loading ? '…' : String(members.length) },
+                    { label:'🟢 Online Now', val: loading ? '…' : String(onlineMembers.length) },
                   ].map(s => (
                     <div key={s.label} style={{
                       padding:'5px 14px', borderRadius:'9999px',
@@ -564,8 +598,8 @@ export default function Community() {
                   letterSpacing:'0.14em', textTransform:'uppercase', opacity:0.48,
                 }}>Online right now →</span>
                 <div style={{ display:'flex' }}>
-                  {onlineMembers.map((m, i) => (
-                    <div key={m.id} onClick={() => setSelected(m)} style={{
+                  {onlineMembers.slice(0, 15).map((m, i) => (
+                    <div key={m.id} onClick={() => selectMember(m)} style={{
                       width:'30px', height:'30px', borderRadius:'50%',
                       background:m.accent, border:`2px solid ${ink}`,
                       display:'flex', alignItems:'center', justifyContent:'center',
@@ -619,7 +653,7 @@ export default function Community() {
               boxShadow:`4px 4px 0 ${ink}`,
             }}>
               {FILTERS.map(f => {
-                const label = f === 'Legend' ? '👑 Legend' : f === 'Expert' ? '🎯 Expert' : f === 'Pro' ? '💎 Pro' : f === 'Rookie' ? '🌱 Rookie' : f === 'Online Now' ? '🟢 Online' : f
+                const label = f === 'Legend' ? '👑 Legend' : f === 'Expert' ? '🎯 Expert' : f === 'Pro' ? '💎 Pro' : f === 'Rising' ? '📈 Rising' : f === 'Rookie' ? '🌱 Rookie' : f === 'Online Now' ? '🟢 Online' : f
                 return (
                   <button key={f} onClick={() => setFilter(f)} style={{
                     fontFamily:"'Fredoka One', cursive", fontSize:'0.68rem',
@@ -636,16 +670,25 @@ export default function Community() {
             <span style={{
               fontFamily:"'Fredoka Variable', sans-serif", fontWeight:700,
               fontSize:'0.7rem', opacity:0.45,
-            }}>{filtered.length} member{filtered.length !== 1 ? 's' : ''}</span>
+            }}>
+              {loading ? 'Loading…' : `${filtered.length} member${filtered.length !== 1 ? 's' : ''}`}
+            </span>
           </div>
 
           {/* ── Member grid ───────────────────────────────── */}
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div style={{ textAlign:'center', padding:'64px 20px' }}>
+              <div style={{ fontSize:'3.5rem', marginBottom:'14px' }} className="rh-animate-float">🎩</div>
+              <div style={{ fontFamily:"'Fredoka One', cursive", fontSize:'1.3rem', opacity:0.4 }}>
+                Loading community…
+              </div>
+            </div>
+          ) : filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'64px 20px' }}>
               <div style={{ fontSize:'3.5rem', marginBottom:'14px' }} className="rh-animate-float">🔍</div>
-              <div style={{
-                fontFamily:"'Fredoka One', cursive", fontSize:'1.3rem', opacity:0.4,
-              }}>No members found — try a different search!</div>
+              <div style={{ fontFamily:"'Fredoka One', cursive", fontSize:'1.3rem', opacity:0.4 }}>
+                No members found — try a different search!
+              </div>
             </div>
           ) : (
             <div style={{
@@ -654,7 +697,7 @@ export default function Community() {
               gap:'16px',
             }}>
               {filtered.map((m, i) => (
-                <MemberCard key={m.id} member={m} index={i} onSelect={() => setSelected(m)} />
+                <MemberCard key={m.id} member={m} index={i} onSelect={() => selectMember(m)} />
               ))}
             </div>
           )}
@@ -662,7 +705,13 @@ export default function Community() {
         </div>
       </div>
 
-      {selected && <ProfileModal member={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <ProfileModal
+          base={selected}
+          detail={detail}
+          onClose={() => { setSelected(null); setDetail(null) }}
+        />
+      )}
     </>
   )
 }

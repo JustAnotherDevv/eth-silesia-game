@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { submitGame } from '../lib/api'
+import { getSession } from '../lib/session'
 
 // ── Questions ─────────────────────────────────────────────────
 const QUESTIONS = [
@@ -82,6 +84,14 @@ export default function Quiz() {
   const [totalXP, setTotalXP]     = useState(0)
   const [correct, setCorrect]     = useState(0)
   const [xpPop, setXpPop]         = useState<number | null>(null)
+
+  // ── Submit to API on results ────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'results') return
+    const session = getSession()
+    if (!session) return
+    submitGame({ userId: session.id, gameType: 'quiz', xpEarned: totalXP, score: correct, total: QUESTIONS.length }).catch(() => {})
+  }, [phase])
 
   // ── Timer ───────────────────────────────────────────────────
   useEffect(() => {

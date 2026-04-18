@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { submitGame } from '../lib/api'
+import { getSession } from '../lib/session'
 
 const ink = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
@@ -111,6 +113,14 @@ export default function Swipe() {
 
   useEffect(() => {
     if (phase === 'playing') wrapRef.current?.focus()
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'results') return
+    const session = getSession()
+    if (!session) return
+    const correct = answers.filter(Boolean).length
+    submitGame({ userId: session.id, gameType: 'swipe', xpEarned: totalXP, score: correct, total: CARDS.length, metadata: { maxStreak } }).catch(() => {})
   }, [phase])
 
   function startGame() {

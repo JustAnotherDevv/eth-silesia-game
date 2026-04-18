@@ -61,5 +61,12 @@ Thumbs.db
 *.key
 *.cert
 
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
 # Claude AI tooling
 .claude
+
+animate

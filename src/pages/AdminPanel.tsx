@@ -283,7 +283,7 @@ const LEVEL_COLOR: Record<string, string> = {
 }
 
 function TabMembers() {
-  const [members, setMembers] = useState(MEMBERS)
+  const [members, _setMembers] = useState(MEMBERS)
   const [search,  setSearch]  = useState('')
   const [removed, setRemoved] = useState<number[]>([])
   const [confirm, setConfirm] = useState<number | null>(null)

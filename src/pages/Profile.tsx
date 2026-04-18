@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { getUser, getUserGames, type User, type GameResult } from '../lib/api'
+import { getSession } from '../lib/session'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
 const surface = 'var(--rh-surface)'
-const card    = 'var(--rh-card)'
 
 // ─── Animated SVG mascot ─────────────────────────────────────
 // IMAGE GENERATION PROMPT:
@@ -13,65 +14,6 @@ const card    = 'var(--rh-card)'
 //  cream/yellow color palette, flat 2D illustration, Fleischer Studios aesthetic,
 //  transparent background, no shading gradients, bold halftone dots for texture"
 
-function CoinMascotSVG() {
-  return (
-    <svg viewBox="0 0 120 160" width="120" height="160" xmlns="http://www.w3.org/2000/svg">
-      {/* Body — coin */}
-      <ellipse cx="60" cy="75" rx="36" ry="38" fill="#FFCD00" stroke="#1A0800" strokeWidth="3.5"/>
-      <ellipse cx="60" cy="75" rx="28" ry="30" fill="none" stroke="#1A0800" strokeWidth="2" strokeDasharray="4 3" opacity="0.4"/>
-      <text x="60" y="82" textAnchor="middle" fontFamily="'Fredoka One',cursive" fontSize="18" fill="#1A0800">$</text>
-
-      {/* Eyes */}
-      <circle cx="48" cy="65" r="7" fill="white" stroke="#1A0800" strokeWidth="2.5"/>
-      <circle cx="72" cy="65" r="7" fill="white" stroke="#1A0800" strokeWidth="2.5"/>
-      <circle cx="50" cy="64" r="4" fill="#1A0800"/>
-      <circle cx="74" cy="64" r="4" fill="#1A0800"/>
-      {/* Shine dots */}
-      <circle cx="52" cy="62" r="1.5" fill="white"/>
-      <circle cx="76" cy="62" r="1.5" fill="white"/>
-
-      {/* Smile */}
-      <path d="M49 80 Q60 90 71 80" fill="none" stroke="#1A0800" strokeWidth="2.5" strokeLinecap="round"/>
-
-      {/* Top hat */}
-      <rect x="44" y="28" width="32" height="18" rx="3" fill="#1A0800"/>
-      <rect x="38" y="44" width="44" height="6" rx="3" fill="#1A0800"/>
-      {/* Hat band */}
-      <rect x="44" y="38" width="32" height="5" fill="#E63946"/>
-
-      {/* Left arm (rubber hose, animated) */}
-      <path d="M24 75 Q10 60 18 48" fill="none" stroke="#FFCD00" strokeWidth="10" strokeLinecap="round"/>
-      <path d="M24 75 Q10 60 18 48" fill="none" stroke="#1A0800" strokeWidth="3" strokeLinecap="round" fill="none"/>
-      {/* Left glove */}
-      <circle cx="18" cy="47" r="8" fill="white" stroke="#1A0800" strokeWidth="2.5"/>
-
-      {/* Right arm */}
-      <path d="M96 75 Q110 58 104 46" fill="none" stroke="#FFCD00" strokeWidth="10" strokeLinecap="round"/>
-      <path d="M96 75 Q110 58 104 46" fill="none" stroke="#1A0800" strokeWidth="3" strokeLinecap="round"/>
-      {/* Right glove — holding a star */}
-      <circle cx="104" cy="45" r="8" fill="white" stroke="#1A0800" strokeWidth="2.5"/>
-      <text x="104" y="49" textAnchor="middle" fontSize="10">★</text>
-
-      {/* Left leg */}
-      <path d="M48 112 Q42 130 36 142" fill="none" stroke="#FFCD00" strokeWidth="10" strokeLinecap="round"/>
-      <path d="M48 112 Q42 130 36 142" fill="none" stroke="#1A0800" strokeWidth="3" strokeLinecap="round"/>
-      <ellipse cx="34" cy="145" rx="10" ry="5" fill="#1A0800"/>
-
-      {/* Right leg */}
-      <path d="M72 112 Q78 130 84 142" fill="none" stroke="#FFCD00" strokeWidth="10" strokeLinecap="round"/>
-      <path d="M72 112 Q78 130 84 142" fill="none" stroke="#1A0800" strokeWidth="3" strokeLinecap="round"/>
-      <ellipse cx="86" cy="145" rx="10" ry="5" fill="#1A0800"/>
-
-      {/* Body outline over arms/legs */}
-      <ellipse cx="60" cy="75" rx="36" ry="38" fill="none" stroke="#1A0800" strokeWidth="3.5"/>
-
-      {/* Animation: float */}
-      <animateTransform attributeName="transform" type="translate"
-        values="0,0; 0,-6; 0,0" dur="2.8s" repeatCount="indefinite"
-        calcMode="spline" keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"/>
-    </svg>
-  )
-}
 
 // ─── XP ring SVG ─────────────────────────────────────────────
 function XPRingSVG({ pct }: { pct: number }) {
@@ -163,25 +105,55 @@ function FireSVG({ count }: { count: number }) {
   )
 }
 
-const PLAYER = { name: 'Rookie Investor', level: 1, xp: 340, xpMax: 1000, streak: 3,
-  badges: ['First Timer', 'Quick Thinker', 'Saver'], totalGames: 12, rank: 142, accuracy: 78 }
-
-const ACTIVITY = [
-  { day: 'Mon', done: true }, { day: 'Tue', done: true }, { day: 'Wed', done: true },
-  { day: 'Thu', done: false }, { day: 'Fri', done: false }, { day: 'Sat', done: false }, { day: 'Sun', done: false },
-]
-
-const HISTORY = [
-  { mode: 'Quick Rounds',  result: '+80 XP',  score: '4/5', date: 'Apr 17', accent: '#FFCD00' },
-  { mode: 'Decision Room', result: '+150 XP', score: '★★★',  date: 'Apr 16', accent: '#E63946' },
-  { mode: 'Quick Rounds',  result: '+60 XP',  score: '3/5', date: 'Apr 15', accent: '#FFCD00' },
-  { mode: 'Daily Streak',  result: '+40 XP',  score: '✓',   date: 'Apr 14', accent: '#FF7B25' },
-]
+const ACCENT_MAP: Record<string, string> = {
+  quiz: '#FFCD00', decision: '#E63946', swipe: '#1565C0', fraud: '#FF7B25', path: '#7B2D8B',
+}
 
 const TABS = ['Overview', 'Badges', 'History', 'Settings']
 
 export default function Profile() {
   const [tab, setTab] = useState('Overview')
+  const [user, setUser] = useState<User | null>(null)
+  const [history, setHistory] = useState<GameResult[]>([])
+
+  useEffect(() => {
+    const session = getSession()
+    if (!session) return
+    getUser(session.id).then(setUser).catch(() => {})
+    getUserGames(session.id).then(setHistory).catch(() => {})
+  }, [])
+
+  const PLAYER = {
+    name: user?.display_name ?? 'Rookie Investor',
+    level: 1,
+    xp: user?.xp ?? 0,
+    xpMax: 1000,
+    streak: user?.streak ?? 0,
+    badges: [] as string[],
+    totalGames: history.length,
+    rank: 0,
+    accuracy: history.length > 0
+      ? Math.round(history.reduce((s, r) => s + (r.total > 0 ? r.score / r.total : 0), 0) / history.length * 100)
+      : 0,
+    avatar: user?.avatar ?? '🎩',
+  }
+
+  const ACTIVITY = (() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const activeDates = new Set(history.map(r => r.created_at.split('T')[0]))
+    return days.map((day, i) => {
+      const d = new Date(); d.setDate(d.getDate() - (6 - i))
+      return { day, done: activeDates.has(d.toISOString().split('T')[0]) }
+    })
+  })()
+
+  const HISTORY = history.slice(0, 4).map(r => ({
+    mode: r.label,
+    result: `+${r.xp_earned} XP`,
+    score: r.total > 0 ? `${r.score}/${r.total}` : '✓',
+    date: r.created_at.slice(5, 10).replace('-', ' '),
+    accent: ACCENT_MAP[r.game_type] ?? '#FFCD00',
+  }))
 
   return (
     <div style={{
@@ -236,12 +208,7 @@ export default function Profile() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 overflow: 'hidden',
               }}>
-                {/* IMAGE PLACEHOLDER — replace with generated avatar:
-                    PROMPT: "1930s rubber hose cartoon portrait of a cheerful
-                    investor character, round face, big eyes with white shine
-                    dots, tiny top hat, white gloves, yellow skin, thick black
-                    outlines, Fleischer Studios style, square crop, no background" */}
-                <CoinMascotSVG />
+                <span style={{ fontSize: '3rem' }}>{PLAYER.avatar}</span>
               </div>
               {/* Level badge */}
               <div style={{

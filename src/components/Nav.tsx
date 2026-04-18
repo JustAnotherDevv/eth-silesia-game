@@ -61,7 +61,6 @@ export function Nav() {
             textDecoration: 'none',
             padding: '10px 14px',
             borderRadius: '9999px',
-            color: 'var(--rh-ink)',
             background: active ? 'var(--rh-ink)' : 'transparent',
             color: active ? 'var(--rh-paper)' : 'var(--rh-ink)',
             boxShadow: active ? '2px 2px 0 var(--rh-ink)' : 'none',

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { getUser } from '../lib/api'
+import { getSession } from '../lib/session'
 
 const FLIP_MS   = 700
 const ink    = 'var(--rh-ink)'
@@ -19,8 +21,8 @@ const TICKER_ITEMS = [
   '★ STREAK ALERT: 847 players maintained a 7-day streak this week',
 ]
 
-const PLAYER = { name: 'Rookie Investor', level: 1, xp: 340, xpMax: 1000, streak: 3,
-  badges: ['First Timer', 'Quick Thinker', 'Saver'] }
+const DEFAULT_PLAYER = { name: 'You', level: 1, xp: 0, xpMax: 500, streak: 0,
+  badges: [] as string[], avatar: '🎩' }
 
 const GAME_MODES_DATA = [
   { tag: 'QUICK ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Are You Smarter Than Your Bank Manager?',            body: 'Five rapid-fire questions. Thirty seconds each. Your financial IQ is about to be revealed.',             emoji: '🎯', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
@@ -57,7 +59,7 @@ function PageGameModes() {
   )
 }
 
-function PageStreak() {
+function PageStreak({ streak }: { streak: number }) {
   return (
     <div style={{ padding: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -68,7 +70,7 @@ function PageStreak() {
         <span>The 30-Day Challenge That Changed One Investor's Life</span>
       </h3>
       <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.8rem', lineHeight: 1.55, opacity: 0.72, marginBottom: '14px' }}>
-        One challenge per day keeps financial ignorance at bay. Your {PLAYER.streak}-day streak is on the line.
+        One challenge per day keeps financial ignorance at bay. Your {streak}-day streak is on the line.
       </p>
       <FlipBtn accent="#FF7B25" href="#">Claim Today's Reward →</FlipBtn>
       <Rule />
@@ -142,7 +144,7 @@ function PageBackCover() {
 
 // ─── Old homepage body (spread 0) ────────────────────────────
 
-function OldHomepageBody() {
+function OldHomepageBody({ player }: { player: typeof DEFAULT_PLAYER }) {
   return (
     <div>
       {/* Row 1: Hero + Sidebar */}
@@ -184,24 +186,26 @@ function OldHomepageBody() {
             </div>
             <div style={{ padding: '14px' }}>
               <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: `3px solid ${ink}`, background: '#FFCD00', boxShadow: `3px 3px 0 ${ink}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 8px' }} className="rh-hover-wobble">🎩</div>
-                <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.92rem' }}>{PLAYER.name}</div>
-                <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.55 }}>Level {PLAYER.level}</div>
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: `3px solid ${ink}`, background: '#FFCD00', boxShadow: `3px 3px 0 ${ink}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 8px' }} className="rh-hover-wobble">{player.avatar}</div>
+                <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.92rem' }}>{player.name}</div>
+                <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.55 }}>Level {player.level}</div>
               </div>
               <div style={{ marginBottom: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.68rem' }}>
-                  <span>XP</span><span>{PLAYER.xp} / {PLAYER.xpMax}</span>
+                  <span>XP</span><span>{player.xp} / {player.xpMax}</span>
                 </div>
-                <XPBar value={PLAYER.xp} max={PLAYER.xpMax} />
+                <XPBar value={player.xp} max={player.xpMax} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 12px', borderRadius: '9999px', border: `2px solid ${ink}`, background: '#FF7B25', color: '#FEF9EE', marginBottom: '10px', boxShadow: `2px 2px 0 ${ink}` }}>
                 <span style={{ fontSize: '1.1rem' }}>🔥</span>
-                <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem' }}>{PLAYER.streak}-Day Streak</span>
+                <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem' }}>{player.streak}-Day Streak</span>
               </div>
               <div>
                 <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.55, marginBottom: '6px' }}>Badges</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {PLAYER.badges.map(b => (
+                  {player.badges.length === 0
+                    ? <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.6rem', opacity: 0.4 }}>Play to earn badges!</span>
+                    : player.badges.map(b => (
                     <span key={b} style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.56rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: '9999px', border: `2px solid ${ink}`, background: surface, boxShadow: `1px 1px 0 ${ink}` }}>{b}</span>
                   ))}
                 </div>
@@ -266,38 +270,65 @@ type Spread = {
   right?:     React.ReactNode
 }
 
-const SPREADS: Spread[] = [
-  {
-    label:      'Front Page',
-    headline:   'Compound Interest Scandal Rocks The Entire Banking World',
-    subhead:    'Local experts reveal the truth behind the most powerful force in all of finance',
-    isFullPage: true,
-  },
-  {
-    label:    'Game Modes',
-    headline: 'Two New Challenges Added To The Gazette This Week',
-    subhead:  'Test your knowledge in Quick Rounds, or face moral dilemmas in the Decision Room',
-    left:     <PageStreak />,
-    right:    <PageGameModes />,
-  },
-  {
-    label:    'Achievements',
-    headline: 'Local Investor Earns Three Badges In A Single Session',
-    subhead:  'How consistent daily practice turned one beginner into a certified financial thinker',
-    left:     <PageAchievements />,
-    right:    <PageBackCover />,
-  },
-]
-
 // ─────────────────────────────────────────────────────────────
 // MAIN
 // ─────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const [player,    setPlayer]    = useState(DEFAULT_PLAYER)
   const [idx,       setIdx]       = useState(0)
   const [flipping,  setFlipping]  = useState(false)
   const [dir,       setDir]       = useState<'fwd'|'bwd'>('fwd')
   const [targetIdx, setTargetIdx] = useState(0)
+
+  const session = getSession()
+  useEffect(() => {
+    if (!session?.id) return
+    getUser(session.id).then(u => {
+      const XP_LEVELS = [
+        { min: 10000, label: 'Legend',  xpMax: 10000 },
+        { min: 5000,  label: 'Expert',  xpMax: 10000 },
+        { min: 2000,  label: 'Pro',     xpMax: 5000  },
+        { min: 500,   label: 'Rising',  xpMax: 2000  },
+        { min: 0,     label: 'Rookie',  xpMax: 500   },
+      ]
+      const lvl   = XP_LEVELS.find(l => u.xp >= l.min) ?? XP_LEVELS[XP_LEVELS.length - 1]
+      setPlayer({
+        name:   u.display_name,
+        level:  XP_LEVELS.indexOf(lvl) + 1,
+        xp:     u.xp,
+        xpMax:  lvl.xpMax,
+        streak: u.streak,
+        badges: [],
+        avatar: u.avatar,
+      })
+    }).catch(() => {
+      if (session) setPlayer(p => ({ ...p, name: session.displayName, avatar: session.avatar }))
+    })
+  }, [session?.id])
+
+  const SPREADS: Spread[] = [
+    {
+      label:      'Front Page',
+      headline:   'Compound Interest Scandal Rocks The Entire Banking World',
+      subhead:    'Local experts reveal the truth behind the most powerful force in all of finance',
+      isFullPage: true,
+    },
+    {
+      label:    'Game Modes',
+      headline: 'Two New Challenges Added To The Gazette This Week',
+      subhead:  'Test your knowledge in Quick Rounds, or face moral dilemmas in the Decision Room',
+      left:     <PageStreak streak={player.streak} />,
+      right:    <PageGameModes />,
+    },
+    {
+      label:    'Achievements',
+      headline: 'Local Investor Earns Three Badges In A Single Session',
+      subhead:  'How consistent daily practice turned one beginner into a certified financial thinker',
+      left:     <PageAchievements />,
+      right:    <PageBackCover />,
+    },
+  ]
 
   const flip = useCallback((direction: 'fwd'|'bwd') => {
     const next = direction === 'fwd' ? idx + 1 : idx - 1
@@ -374,7 +405,7 @@ export default function Home() {
     if (idx === 0 && !flipping) {
       return (
         <div onClick={() => flip('fwd')} style={{ cursor: 'e-resize', height: '100%' }}>
-          <OldHomepageBody />
+          <OldHomepageBody player={player} />
         </div>
       )
     }
@@ -391,7 +422,7 @@ export default function Home() {
           {/* Leaf: full old homepage sweeps left */}
           <div style={leafAnim('left center')}>
             <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
-              <OldHomepageBody />
+              <OldHomepageBody player={player} />
               {shadeLeaf('left')}
               {spineHighlight('left')}
             </div>
@@ -410,7 +441,7 @@ export default function Home() {
         <div style={{ position: 'relative' }}>
           {/* Revealed: spread 0 full-page with cast shadow */}
           <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-            <OldHomepageBody />
+            <OldHomepageBody player={player} />
             {castShadow('right')}
           </div>
           {/* Leaf: current spread sweeps right */}

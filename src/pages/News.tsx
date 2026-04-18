@@ -1,4 +1,7 @@
+import React, { useState, useEffect } from 'react'
 import { Progress } from '@/components/ui/progress'
+import { getUser } from '../lib/api'
+import { getSession } from '../lib/session'
 
 const TODAY = new Date().toLocaleDateString('en-US', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -11,15 +14,6 @@ const TICKER_ITEMS = [
   '★ PKO EXCLUSIVE: New savings rates announced — are you getting yours?',
   '★ STREAK ALERT: 847 players maintained a 7-day streak this week',
 ]
-
-const PLAYER = {
-  name: 'Rookie Investor',
-  level: 1,
-  xp: 340,
-  xpMax: 1000,
-  streak: 3,
-  badges: ['First Timer', 'Quick Thinker', 'Saver'],
-}
 
 const GAME_MODES = [
   {
@@ -86,9 +80,39 @@ function pressDown(e: React.MouseEvent<HTMLElement>) {
   e.currentTarget.style.boxShadow = `1px 1px 0 ${ink}`
 }
 
-import React from 'react'
+const XP_LEVELS = [
+  { min: 10000, label: 'Legend',  xpMax: 10000 },
+  { min: 5000,  label: 'Expert',  xpMax: 10000 },
+  { min: 2000,  label: 'Pro',     xpMax: 5000  },
+  { min: 500,   label: 'Rising',  xpMax: 2000  },
+  { min: 0,     label: 'Rookie',  xpMax: 500   },
+]
 
-export default function Home() {
+export default function News() {
+  const [player, setPlayer] = useState({
+    name: 'You', level: 1, xp: 0, xpMax: 500, streak: 0,
+    badges: [] as string[], avatar: '🎩',
+  })
+
+  const session = getSession()
+  useEffect(() => {
+    if (!session?.id) return
+    getUser(session.id).then(u => {
+      const lvl = XP_LEVELS.find(l => u.xp >= l.min) ?? XP_LEVELS[XP_LEVELS.length - 1]
+      setPlayer({
+        name:   u.display_name,
+        level:  XP_LEVELS.indexOf(lvl) + 1,
+        xp:     u.xp,
+        xpMax:  lvl.xpMax,
+        streak: u.streak,
+        badges: [],
+        avatar: u.avatar,
+      })
+    }).catch(() => {
+      if (session) setPlayer(p => ({ ...p, name: session.displayName, avatar: session.avatar }))
+    })
+  }, [session?.id])
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--background)', paddingBottom: '44px' }}>
 
@@ -241,7 +265,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Cartoon illustration */}
               <div style={{
                 width: '130px', height: '130px',
                 borderRadius: '50% 46% 50% 48%',
@@ -256,7 +279,6 @@ export default function Home() {
 
           {/* Player sidebar */}
           <div style={{ padding: '20px' }}>
-            {/* Player card */}
             <div style={{
               border: `2.5px solid ${ink}`,
               borderRadius: '1.4rem 1.6rem 1.5rem 1.3rem',
@@ -282,16 +304,16 @@ export default function Home() {
                     boxShadow: `3px 3px 0 ${ink}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '1.9rem', margin: '0 auto 8px',
-                  }} className="rh-hover-wobble">🎩</div>
-                  <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.95rem' }}>{PLAYER.name}</div>
-                  <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.55 }}>Level {PLAYER.level}</div>
+                  }} className="rh-hover-wobble">{player.avatar}</div>
+                  <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.95rem' }}>{player.name}</div>
+                  <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.55 }}>Level {player.level}</div>
                 </div>
 
                 <div style={{ marginBottom: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.7rem' }}>
-                    <span>XP</span><span>{PLAYER.xp} / {PLAYER.xpMax}</span>
+                    <span>XP</span><span>{player.xp} / {player.xpMax}</span>
                   </div>
-                  <Progress value={(PLAYER.xp / PLAYER.xpMax) * 100} />
+                  <Progress value={(player.xp / player.xpMax) * 100} />
                 </div>
 
                 <div style={{
@@ -302,28 +324,29 @@ export default function Home() {
                   boxShadow: `2px 2px 0 ${ink}`,
                 }}>
                   <span style={{ fontSize: '1.1rem' }}>🔥</span>
-                  <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.78rem', letterSpacing: '0.05em' }}>{PLAYER.streak}-Day Streak</span>
+                  <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.78rem', letterSpacing: '0.05em' }}>{player.streak}-Day Streak</span>
                 </div>
 
                 <div>
                   <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.55, marginBottom: '7px' }}>Badges</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                    {PLAYER.badges.map(b => (
-                      <span key={b} style={{
-                        fontFamily: "'Fredoka Variable', sans-serif",
-                        fontWeight: 700, fontSize: '0.58rem',
-                        letterSpacing: '0.06em', textTransform: 'uppercase',
-                        padding: '2px 8px', borderRadius: '9999px',
-                        border: `2px solid ${ink}`, background: surface,
-                        boxShadow: `1px 1px 0 ${ink}`,
-                      }}>{b}</span>
-                    ))}
+                    {player.badges.length === 0
+                      ? <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.6rem', opacity: 0.4 }}>Play to earn badges!</span>
+                      : player.badges.map(b => (
+                        <span key={b} style={{
+                          fontFamily: "'Fredoka Variable', sans-serif",
+                          fontWeight: 700, fontSize: '0.58rem',
+                          letterSpacing: '0.06em', textTransform: 'uppercase',
+                          padding: '2px 8px', borderRadius: '9999px',
+                          border: `2px solid ${ink}`, background: surface,
+                          boxShadow: `1px 1px 0 ${ink}`,
+                        }}>{b}</span>
+                      ))}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Financial forecast */}
             <div style={{
               border: `2px solid ${ink}`, borderRadius: '1rem 1.2rem 1rem 1.1rem',
               padding: '10px 14px', background: surface,

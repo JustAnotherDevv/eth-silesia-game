@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { submitGame } from '../lib/api'
+import { getSession } from '../lib/session'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -410,7 +412,7 @@ function OutcomeSVG({ outcome, xp }: { outcome: Outcome; xp: number }) {
 // ─── Coin shower (brilliant only) ────────────────────────────
 
 function CoinShower() {
-  const coins = Array.from({ length: 22 }, (_, i) => ({
+  const coins = Array.from({ length: 22 }, (_) => ({
     left: 4 + Math.random() * 92,
     delay: Math.random() * 2.4,
     size: 18 + Math.random() * 18,
@@ -556,6 +558,14 @@ export default function Decision() {
     setShowConsequence(false)
     setPhase('briefing')
   }
+
+  // ── Submit to API on verdict ────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'verdict' || !chosenChoice) return
+    const session = getSession()
+    if (!session) return
+    submitGame({ userId: session.id, gameType: 'decision', xpEarned: chosenChoice.xp, score: 1, total: 1, metadata: { outcome: chosenChoice.outcome, scenario: scenario.id } }).catch(() => {})
+  }, [phase])
 
   // Consequence auto-advance
   useEffect(() => {

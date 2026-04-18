@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { getLeaderboard, getLeaderboardStats, type LeaderboardEntry } from '../lib/api'
+import { getSession } from '../lib/session'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -131,21 +133,28 @@ function TrophySVG() {
   )
 }
 
-const PLAYERS = [
-  { rank: 1,  name: 'Compound Carl',    xp: 9840, streak: 42, badges: 18, change: 0,  avatar: '🎩', level: 'Legend',  accent: '#FFCD00' },
-  { rank: 2,  name: 'Budget Barbara',   xp: 8720, streak: 31, badges: 14, change: +1, avatar: '👑', level: 'Expert',  accent: '#C0C8E0' },
-  { rank: 3,  name: 'Interest Igor',    xp: 7655, streak: 28, badges: 12, change: -1, avatar: '🎯', level: 'Expert',  accent: '#E8A870' },
-  { rank: 4,  name: 'Savings Sam',      xp: 6420, streak: 19, badges: 10, change: +2, avatar: '🌟', level: 'Pro',     accent: '#FF7B25' },
-  { rank: 5,  name: 'Dividend Dana',    xp: 5910, streak: 15, badges: 9,  change: 0,  avatar: '💎', level: 'Pro',     accent: '#1565C0' },
-  { rank: 6,  name: 'ETF Eddie',        xp: 5240, streak: 12, badges: 8,  change: +3, avatar: '📈', level: 'Pro',     accent: '#2D9A4E' },
-  { rank: 7,  name: 'Index Ivan',       xp: 4680, streak: 10, badges: 7,  change: -2, avatar: '🔮', level: 'Pro',     accent: '#7B2D8B' },
-  { rank: 8,  name: 'Rookie Investor',  xp: 340,  streak: 3,  badges: 3,  change: +4, avatar: '🎩', level: 'Rookie',  accent: '#E63946', isYou: true },
-]
-
 const CATEGORIES = ['All Time', 'This Week', 'This Month']
 
 export default function Leaderboard() {
   const [cat, setCat] = useState('All Time')
+  const [players, setPlayers] = useState<(LeaderboardEntry & { isYou?: boolean; badges?: number; change?: number })[]>([])
+  const [stats, setStats] = useState({ totalUsers: 0, activeToday: 0, maxStreak: 0 })
+
+  useEffect(() => {
+    const session = getSession()
+    getLeaderboard().then(rows => {
+      setPlayers(rows.map(r => ({ ...r, isYou: r.id === session?.id, badges: 0, change: 0 })))
+    }).catch(() => {})
+    getLeaderboardStats().then(setStats).catch(() => {})
+  }, [])
+
+  const PLAYERS = players.length > 0 ? players : [
+    { rank: 1, id: '', username: '', display_name: 'Compound Carl',   xp: 9840, streak: 42, avatar: '🎩', label: 'Legend', color: '#FFCD00', badges: 18, change: 0  },
+    { rank: 2, id: '', username: '', display_name: 'Budget Barbara',  xp: 8720, streak: 31, avatar: '👑', label: 'Expert', color: '#7B2D8B', badges: 14, change: +1 },
+    { rank: 3, id: '', username: '', display_name: 'Interest Igor',   xp: 7655, streak: 28, avatar: '🎯', label: 'Expert', color: '#7B2D8B', badges: 12, change: -1 },
+    { rank: 4, id: '', username: '', display_name: 'Savings Sam',     xp: 6420, streak: 19, avatar: '🌟', label: 'Pro',    color: '#1565C0', badges: 10, change: +2 },
+    { rank: 5, id: '', username: '', display_name: 'Dividend Dana',   xp: 5910, streak: 15, avatar: '💎', label: 'Pro',    color: '#1565C0', badges: 9,  change: 0  },
+  ]
 
   return (
     <div style={{
@@ -196,9 +205,9 @@ export default function Leaderboard() {
               </p>
               <div style={{ display: 'flex', gap: '6px', marginTop: '16px' }}>
                 {[
-                  { label: '🏆 Players', value: '2,847' },
-                  { label: '⚡ Active Today', value: '341' },
-                  { label: '🔥 Longest Streak', value: '42 days' },
+                  { label: '🏆 Players', value: stats.totalUsers.toLocaleString() || '…' },
+                  { label: '⚡ Active Today', value: String(stats.activeToday) || '…' },
+                  { label: '🔥 Longest Streak', value: stats.maxStreak ? `${stats.maxStreak} days` : '…' },
                 ].map(s => (
                   <div key={s.label} style={{
                     padding: '5px 14px', borderRadius: '9999px',
@@ -219,9 +228,9 @@ export default function Leaderboard() {
             <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.45, marginBottom: '8px', textAlign: 'center' }}>★ Top 3 This Week ★</div>
             <PodiumSVG />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '8px' }}>
-              {[PLAYERS[1], PLAYERS[0], PLAYERS[2]].map((p, i) => (
+              {[PLAYERS[1], PLAYERS[0], PLAYERS[2]].filter(Boolean).map((p) => (
                 <div key={p.rank} style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.75rem' }}>{p.name}</div>
+                  <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.75rem' }}>{p.display_name}</div>
                   <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.62rem', opacity: 0.55 }}>{p.xp.toLocaleString()} XP</div>
                 </div>
               ))}
@@ -296,21 +305,21 @@ export default function Leaderboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
                   width: '36px', height: '36px', borderRadius: '50%',
-                  background: p.accent, border: `2.5px solid ${ink}`,
+                  background: p.color, border: `2.5px solid ${ink}`,
                   boxShadow: `2px 2px 0 ${ink}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '1.2rem', flexShrink: 0,
                 }}>{p.avatar}</div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem' }}>{p.name}</span>
+                    <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem' }}>{p.display_name}</span>
                     {p.isYou && <span style={{ background: '#E63946', color: '#FEF9EE', fontFamily: "'Fredoka One', cursive", fontSize: '0.5rem', letterSpacing: '0.1em', padding: '1px 7px', borderRadius: '9999px', border: `1.5px solid ${ink}` }}>YOU</span>}
                   </div>
                   <span style={{
                     fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700,
                     fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase',
                     opacity: 0.45,
-                  }}>{p.level}</span>
+                  }}>{p.label}</span>
                 </div>
               </div>
 
@@ -328,14 +337,14 @@ export default function Leaderboard() {
 
               {/* Badges */}
               <div style={{ textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem' }}>
-                {p.badges} <span style={{ opacity: 0.4, fontSize: '0.65rem' }}>🏆</span>
+                {p.badges ?? 0} <span style={{ opacity: 0.4, fontSize: '0.65rem' }}>🏆</span>
               </div>
 
               {/* Change */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                {p.change > 0 && <><UpArrowSVG /><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#2D9A4E' }}>{p.change}</span></>}
-                {p.change < 0 && <><DownArrowSVG /><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#E63946' }}>{Math.abs(p.change)}</span></>}
-                {p.change === 0 && <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', opacity: 0.3 }}>—</span>}
+                {(p.change ?? 0) > 0 && <><UpArrowSVG /><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#2D9A4E' }}>{p.change}</span></>}
+                {(p.change ?? 0) < 0 && <><DownArrowSVG /><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#E63946' }}>{Math.abs(p.change ?? 0)}</span></>}
+                {(p.change ?? 0) === 0 && <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', opacity: 0.3 }}>—</span>}
               </div>
             </div>
           ))}
@@ -353,8 +362,10 @@ export default function Leaderboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '2rem' }} className="rh-animate-float">🎯</div>
             <div>
-              <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1rem' }}>You're ranked #142 globally!</div>
-              <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.72rem', opacity: 0.55 }}>Play 3 more games to enter the Top 100 🚀</div>
+              <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1rem' }}>
+                {(() => { const me = PLAYERS.find(p => p.isYou); return me ? `You're ranked #${me.rank} globally!` : 'Complete onboarding to join the leaderboard!' })()}
+              </div>
+              <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.72rem', opacity: 0.55 }}>Play more games to climb the ranks 🚀</div>
             </div>
           </div>
           <a href="/quiz" style={{

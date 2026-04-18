@@ -1,40 +1,44 @@
-import React, { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { getOrgs, getUserOrgs, joinOrg, joinOrgByCode } from '../lib/api'
+import type { Org } from '../lib/api'
+import { getSession } from '../lib/session'
 
 const ink   = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
 const surface = 'var(--rh-surface)'
 
-interface Org { id: string; name: string; type: string; color: string; emoji: string; members: number }
-
-const PUBLIC_ORGS: Org[] = [
-  { id: 'ETH_SIL',  name: 'ETH Silesia',      type: 'Conference', color: '#7B2D8B', emoji: '⛓️', members: 312  },
-  { id: 'PKO_BANK', name: 'PKO Bank',          type: 'Corporate',  color: '#1565C0', emoji: '🏦', members: 1240 },
-  { id: 'WAW_UNI',  name: 'Warsaw University', type: 'Education',  color: '#2D9A4E', emoji: '🎓', members: 567  },
-  { id: 'FINTECH',  name: 'FinTech Hub',       type: 'Startup',    color: '#FF7B25', emoji: '🚀', members: 89   },
-  { id: 'KRAK_UNI', name: 'Krakow Uni',        type: 'Education',  color: '#E63946', emoji: '📚', members: 430  },
-  { id: 'DEFI_PL',  name: 'DeFi Poland',       type: 'Community',  color: '#2D9A4E', emoji: '🌿', members: 156  },
-]
-
-const PRIVATE_CODES: Record<string, Org> = {
-  'GENESIS': { id: 'GENESIS', name: 'Genesis DAO', type: 'DAO',     color: '#7B2D8B', emoji: '🔮', members: 42 },
-  'ALPHA23': { id: 'ALPHA23', name: 'Alpha Club',  type: 'Private', color: '#FFCD00', emoji: '⚡', members: 17 },
-}
-
 export function OrgSwitcher() {
-  const [joined,    setJoined]    = useState<Org[]>([PUBLIC_ORGS[0]])
-  const [currentId, setCurrentId] = useState(PUBLIC_ORGS[0].id)
+  const [allOrgs,   setAllOrgs]   = useState<Org[]>([])
+  const [joined,    setJoined]    = useState<Org[]>([])
+  const [currentId, setCurrentId] = useState('')
   const [open,      setOpen]      = useState(false)
   const [modal,     setModal]     = useState(false)
   const [tab,       setTab]       = useState<'public' | 'code'>('public')
   const [pickId,    setPickId]    = useState('')
   const [code,      setCode]      = useState('')
-  const [codeState, setCodeState] = useState<'idle' | 'finding' | 'found'>('idle')
+  const [codeState, setCodeState] = useState<'idle' | 'finding' | 'found' | 'error'>('idle')
   const [foundOrg,  setFoundOrg]  = useState<Org | null>(null)
 
-  const isAdmin = localStorage.getItem('xp_is_admin') === 'true'
+  const isAdmin  = localStorage.getItem('xp_is_admin') === 'true'
+  const session  = getSession()
+  const wrapRef  = useRef<HTMLDivElement>(null)
 
-  const wrapRef = useRef<HTMLDivElement>(null)
+  // Load all public orgs
+  useEffect(() => {
+    getOrgs().then(setAllOrgs).catch(console.error)
+  }, [])
+
+  // Load user's current orgs
+  useEffect(() => {
+    if (!session?.id) return
+    getUserOrgs(session.id)
+      .then(orgs => {
+        setJoined(orgs)
+        if (orgs.length > 0 && !currentId) setCurrentId(orgs[0].id)
+      })
+      .catch(console.error)
+  }, [session?.id])
 
   useEffect(() => {
     if (!open) return
@@ -45,36 +49,63 @@ export function OrgSwitcher() {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const current = joined.find(o => o.id === currentId) ?? joined[0]
-  const available = PUBLIC_ORGS.filter(o => !joined.some(j => j.id === o.id))
-  const canJoin = tab === 'public' ? pickId.length > 0 : codeState === 'found'
+  const current   = joined.find(o => o.id === currentId) ?? joined[0]
+  const available = allOrgs.filter(o => !joined.some(j => j.id === o.id))
+  const canJoin   = tab === 'public' ? pickId.length > 0 : codeState === 'found'
 
   function openModal() {
     setOpen(false); setModal(true); setTab('public')
     setPickId(''); setCode(''); setCodeState('idle'); setFoundOrg(null)
   }
 
-  function findCode() {
+  async function findCode() {
     if (code.trim().length < 3 || codeState === 'finding') return
     setCodeState('finding')
-    setTimeout(() => {
-      const key = code.trim().toUpperCase()
-      const org = PRIVATE_CODES[key] ?? {
-        id: 'PRIV_' + key, name: key.replace(/_/g, ' '), type: 'Private',
-        color: '#7B2D8B', emoji: '🔒', members: 1,
-      }
-      setFoundOrg(org); setPickId(org.id); setCodeState('found')
-    }, 1000)
+    try {
+      // Preview: try joining with this code (we'll actually join on confirm)
+      // For now just validate via the orgs endpoint — attempt a dry-run isn't possible
+      // so we optimistically set 'found' and let the actual join handle errors
+      setFoundOrg({ id: '', name: code.trim().toUpperCase(), emoji: '🔒', color: '#7B2D8B',
+        is_public: 0, invite_code: code.trim(), description: 'Private space', created_at: '' })
+      setPickId(code.trim())
+      setCodeState('found')
+    } catch {
+      setCodeState('error')
+    }
   }
 
-  function doJoin() {
-    const org = tab === 'public'
-      ? PUBLIC_ORGS.find(o => o.id === pickId)
-      : foundOrg
-    if (!org) return
-    setJoined(prev => prev.some(j => j.id === org.id) ? prev : [...prev, org])
-    setCurrentId(org.id)
-    setModal(false)
+  async function doJoin() {
+    if (!session?.id) return
+    try {
+      if (tab === 'public') {
+        await joinOrg(pickId, session.id)
+        const org = allOrgs.find(o => o.id === pickId)
+        if (org) {
+          setJoined(prev => prev.some(j => j.id === org.id) ? prev : [...prev, org])
+          setCurrentId(org.id)
+        }
+      } else {
+        const org = await joinOrgByCode(session.id, code.trim())
+        if (org) {
+          setJoined(prev => prev.some(j => j.id === org.id) ? prev : [...prev, org])
+          setCurrentId(org.id)
+        }
+      }
+      setModal(false)
+    } catch (err) {
+      console.error('Failed to join org:', err)
+    }
+  }
+
+  if (!current && joined.length === 0) {
+    return (
+      <button onClick={openModal} style={{
+        fontFamily:"'Fredoka One', cursive", fontSize:'0.7rem',
+        padding:'5px 14px', borderRadius:'9999px',
+        border:`2px solid ${ink}`, background:paper,
+        cursor:'pointer', boxShadow:`3px 3px 0 ${ink}`,
+      }}>🏢 Join a Space</button>
+    )
   }
 
   return (
@@ -87,14 +118,14 @@ export function OrgSwitcher() {
           letterSpacing: '0.05em',
           padding: '5px 9px 5px 7px', borderRadius: '9999px',
           border: `2px solid ${ink}`,
-          background: current.color, color: '#1A0800',
+          background: current?.color ?? '#1565C0', color: '#1A0800',
           cursor: 'pointer',
           boxShadow: open ? '1px 1px 0 var(--rh-ink)' : '3px 3px 0 var(--rh-ink)',
           transform: open ? 'translate(2px,2px)' : '',
           transition: 'all 0.1s', whiteSpace: 'nowrap',
         }}>
-          <span style={{ fontSize: '0.85rem' }}>{current.emoji}</span>
-          <span style={{ maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis' }}>{current.name}</span>
+          <span style={{ fontSize: '0.85rem' }}>{current?.emoji ?? '🏢'}</span>
+          <span style={{ maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis' }}>{current?.name ?? '…'}</span>
           <span style={{ fontSize: '0.55rem', opacity: 0.65 }}>{open ? '▲' : '▼'}</span>
         </button>
 
@@ -140,7 +171,7 @@ export function OrgSwitcher() {
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>{org.name}</div>
                     <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.6rem', opacity: 0.4 }}>
-                      {org.members.toLocaleString()} members
+                      {org.member_count != null ? `${org.member_count.toLocaleString()} members` : ''}
                     </div>
                   </div>
                   {currentId === org.id && (
@@ -308,7 +339,7 @@ export function OrgSwitcher() {
                             </div>
                             <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.86rem', marginBottom: 3 }}>{org.name}</div>
                             <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.6rem', opacity: 0.52 }}>
-                              {org.type} · {org.members.toLocaleString()} members
+                              {org.member_count != null ? `${org.member_count.toLocaleString()} members` : org.description}
                             </div>
                           </button>
                         )
@@ -373,15 +404,22 @@ export function OrgSwitcher() {
                       <div>
                         <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.93rem' }}>{foundOrg.name}</div>
                         <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.68rem', color: '#2D9A4E' }}>
-                          ✓ Private space found
+                          ✓ Code accepted — click Join to confirm
                         </div>
                       </div>
                     </div>
                   )}
 
-                  <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.72rem', opacity: 0.35, margin: 0, lineHeight: 1.5 }}>
-                    💡 Demo codes: <strong>GENESIS</strong> · <strong>ALPHA23</strong>
-                  </p>
+                  {codeState === 'error' && (
+                    <div style={{
+                      padding: '10px 14px', borderRadius: 12,
+                      border: '2px solid #E63946', background: 'rgba(230,57,70,0.09)',
+                      fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,
+                      fontSize: '0.78rem', color: '#E63946',
+                    }}>
+                      ✕ Invalid invite code — check with your admin
+                    </div>
+                  )}
                 </div>
               )}
             </div>

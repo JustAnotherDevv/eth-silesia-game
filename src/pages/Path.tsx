@@ -361,11 +361,8 @@ function ProgressHeader() {
     }}>
       {/* Title */}
       <div style={{ flex: 1, minWidth: '200px' }}>
-        <h1 style={{
-          fontFamily: "'Fredoka One', cursive",
-          fontSize: 'clamp(1.4rem, 3vw, 2rem)',
-          lineHeight: 1, marginBottom: '4px',
-          textShadow: `3px 3px 0 ${ink}`,
+        <h1 className="text-4xl font-bold" style={{
+          marginBottom: '4px',
         }}>Learning Path</h1>
         <p style={{
           fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,

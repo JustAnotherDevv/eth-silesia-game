@@ -3,30 +3,37 @@ import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from './ThemeToggle'
 import { OrgSwitcher } from './OrgSwitcher'
 import { useIsMobile } from '../lib/responsive'
+import { useFeatureFlags } from '../lib/featureFlags'
+import { useAuth } from '../contexts/AuthContext'
 
-const LINKS = [
-  { to: '/',            label: 'Home' },
-  { to: '/news',        label: 'News' },
-  { to: '/quiz',        label: 'Quick Rounds' },
-  { to: '/design',      label: 'Design' },
-  { to: '/path',        label: 'My Path' },
-  { to: '/decision',    label: 'Decision Room' },
-  { to: '/swipe',       label: 'Card Swipe' },
-  { to: '/fraud',       label: 'Fraud Spotter' },
-  { to: '/community',   label: 'Community' },
+// Flags are keyed by the flag key; null means always show (no flag controls it)
+const LINKS: { to: string; label: string; flag: string | null }[] = [
+  { to: '/',          label: 'Home',          flag: null },
+  { to: '/news',      label: 'News',          flag: 'news' },
+  { to: '/quiz',      label: 'Quick Rounds',  flag: 'quiz' },
+  { to: '/path',      label: 'My Path',       flag: 'path' },
+  { to: '/decision',  label: 'Decision Room', flag: 'decision' },
+  { to: '/swipe',     label: 'Card Swipe',    flag: 'swipe' },
+  { to: '/fraud',     label: 'Fraud Spotter', flag: 'fraud' },
+  { to: '/community', label: 'Community',     flag: 'community' },
 ]
 
-const RIGHT_LINKS = [
-  { to: '/leaderboard', label: '🏆 Leaderboard', accent: '#FFCD00' },
-  { to: '/profile',     label: '🎩 Profile',     accent: '#FF7B25' },
+const RIGHT_LINKS: { to: string; label: string; accent: string; flag: string | null }[] = [
+  { to: '/leaderboard', label: '🏆 Leaderboard', accent: '#FFCD00', flag: 'leaderboard' },
+  { to: '/profile',     label: '🎩 Profile',     accent: '#FF7B25', flag: null },
 ]
 
 export function Nav() {
   const { pathname } = useLocation()
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
+  const { isEnabled } = useFeatureFlags()
+  const { isAdmin } = useAuth()
 
   const closeMenu = () => setMenuOpen(false)
+
+  const visibleLinks = LINKS.filter(l => l.flag === null || isEnabled(l.flag))
+  const visibleRight = RIGHT_LINKS.filter(l => l.flag === null || isEnabled(l.flag))
 
   if (isMobile) {
     return (
@@ -65,7 +72,6 @@ export function Nav() {
           </div>
         </nav>
 
-        {/* Mobile drawer */}
         {menuOpen && (
           <div style={{
             position: 'fixed', top: '52px', left: 0, right: 0, bottom: 0, zIndex: 99,
@@ -79,7 +85,7 @@ export function Nav() {
           }}>
             <OrgSwitcher />
             <div style={{ height: '12px' }} />
-            {LINKS.map(({ to, label }) => {
+            {visibleLinks.map(({ to, label }) => {
               const active = pathname === to
               return (
                 <Link key={to} to={to} onClick={closeMenu} style={{
@@ -98,7 +104,7 @@ export function Nav() {
               )
             })}
             <div style={{ height: '8px', borderTop: '1.5px solid var(--rh-ink)', margin: '8px 0' }} />
-            {RIGHT_LINKS.map(({ to, label, accent }) => {
+            {visibleRight.map(({ to, label, accent }) => {
               const active = pathname === to
               return (
                 <Link key={to} to={to} onClick={closeMenu} style={{
@@ -117,6 +123,21 @@ export function Nav() {
                 </Link>
               )
             })}
+            {isAdmin && (
+              <Link to="/admin" onClick={closeMenu} style={{
+                fontFamily: "'Fredoka One', cursive",
+                fontSize: '1.1rem', letterSpacing: '0.05em',
+                textDecoration: 'none',
+                padding: '14px 20px', borderRadius: '14px',
+                background: pathname === '/admin' ? 'var(--rh-ink)' : '#7B2D8B',
+                color: 'white',
+                border: `2px solid var(--rh-ink)`,
+                boxShadow: `3px 3px 0 var(--rh-ink)`,
+                display: 'block', marginTop: '4px',
+              }}>
+                👑 Admin
+              </Link>
+            )}
           </div>
         )}
       </>
@@ -133,7 +154,6 @@ export function Nav() {
       backgroundImage: 'radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px)',
       backgroundSize: '18px 18px',
     }}>
-      {/* Logo */}
       <Link to="/" style={{
         fontFamily: "'Fredoka One', cursive",
         fontSize: '1.1rem',
@@ -149,8 +169,7 @@ export function Nav() {
 
       <OrgSwitcher />
 
-      {/* Nav links */}
-      {LINKS.map(({ to, label }) => {
+      {visibleLinks.map(({ to, label }) => {
         const active = pathname === to
         return (
           <Link key={to} to={to} style={{
@@ -173,7 +192,7 @@ export function Nav() {
       })}
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        {RIGHT_LINKS.map(({ to, label, accent }) => {
+        {visibleRight.map(({ to, label, accent }) => {
           const active = pathname === to
           return (
             <Link key={to} to={to} style={{
@@ -195,6 +214,18 @@ export function Nav() {
             >{label}</Link>
           )
         })}
+        {isAdmin && (
+          <Link to="/admin" style={{
+            fontFamily: "'Fredoka One', cursive",
+            fontSize: '0.72rem', letterSpacing: '0.08em',
+            textDecoration: 'none', padding: '7px 14px',
+            borderRadius: '9999px', border: `2px solid var(--rh-ink)`,
+            background: pathname === '/admin' ? 'var(--rh-ink)' : '#7B2D8B',
+            color: 'white',
+            boxShadow: pathname === '/admin' ? '2px 2px 0 var(--rh-ink)' : `3px 3px 0 var(--rh-ink)`,
+            whiteSpace: 'nowrap',
+          } as React.CSSProperties}>👑 Admin</Link>
+        )}
         <div style={{ marginLeft: '6px' }}>
           <ThemeToggle />
         </div>

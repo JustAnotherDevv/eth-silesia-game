@@ -6,6 +6,7 @@ import { getSession, setSession, clearSession, type Session } from '../lib/sessi
 interface AuthContextValue {
   session: Session | null
   loading: boolean
+  isAdmin: boolean
   signOut: () => Promise<void>
   refreshSession: () => void
 }
@@ -13,6 +14,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   session: null,
   loading: true,
+  isAdmin: false,
   signOut: async () => {},
   refreshSession: () => {},
 })
@@ -23,8 +25,12 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize from localStorage immediately so returning users don't flash the loading screen
-  const [session, setSessionState] = useState<Session | null>(() => getSession())
-  const [loading, setLoading] = useState(true)
+  const [session,  setSessionState] = useState<Session | null>(() => getSession())
+  const [loading,  setLoading]      = useState(true)
+  const [isAdmin,  setIsAdmin]      = useState(() => {
+    const s = getSession()
+    return s ? localStorage.getItem(`xp_admin_${s.id}`) === 'true' : false
+  })
 
   async function loadUserFromAuth(userId: string): Promise<Session | null> {
     try {
@@ -37,6 +43,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setSession(s)
       setSessionState(s)
+      // Sync platform admin flag
+      const adminFlag = (user as Record<string, unknown>).is_platform_admin === true
+      localStorage.setItem(`xp_admin_${user.id}`, String(adminFlag))
+      setIsAdmin(adminFlag)
       return s
     } catch {
       return null
@@ -86,10 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut()
     clearSession()
     setSessionState(null)
+    setIsAdmin(false)
   }
 
   return (
-    <AuthContext.Provider value={{ session, loading, signOut, refreshSession }}>
+    <AuthContext.Provider value={{ session, loading, isAdmin, signOut, refreshSession }}>
       {children}
     </AuthContext.Provider>
   )

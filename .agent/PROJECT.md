@@ -149,3 +149,35 @@
                                                                                                                                                             
   The most demo-compelling path is probably Decision Room → Article reader → Achievement toasts, in that order.
                                                             
+
+
+
+
+---
+
+
+                                                                                                                  
+⏺ Yes, this is actually a real connection — and stronger than the HR angle.                                                                                 
+                                               
+  The platform mechanics are content-agnostic. Quiz rounds, branching decision scenarios, learning paths, XP/badges — none of that cares whether the topic  
+  is compound interest or energy consumption. You'd pitch it as:
+                                                                                                                                                            
+  ▎ "A gamified customer education platform. Instead of financial literacy — energy literacy. Teach Tauron customers how to reduce consumption, understand  
+  ▎ smart meters, pick the right tariff, through the same quiz/decision/onboarding loop."                                                                   
+                                                                                                                                                            
+  Decision Room scenario: "Your bill jumped 40%. You can: A) switch to off-peak usage, B) install smart plugs, C) change tariff, D) do nothing." — branching
+   consequences, real Tauron product education baked in. That's legitimately what customer service innovation looks like.
+                                                                                                                                                            
+  But here's the problem you need to solve:                       
+
+  You can't demo the exact same app to both PKO (financial content) and Tauron (energy content) without it looking lazy. You'd need one of:                 
+   
+  1. Two content skins — same platform, swapped quiz data and learning path topics. Probably 3-4h of content work.                                          
+  2. Pitch it as configurable — "XP Gazette is a white-label gamified education platform. PKO track: financial literacy. Tauron track: energy literacy."
+  Risky — judges want to see their solution, not potential.                                                                                                 
+                                                                  
+  Chatbot angle: real stretch. You don't have one. Don't overclaim.                                                                                         
+                                                                  
+  Honest verdict: Tauron is now viable, but only if you build Tauron-specific content. Three tracks total becomes feasible if you treat the platform as the 
+  product and content as the variable. That's actually a compelling meta-story — but it requires more work than originally scoped.
+                                                  

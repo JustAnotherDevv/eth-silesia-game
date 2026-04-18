@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getUser, getUserGames, type User, type GameResult } from '../lib/api'
+import { getUser, getUserGames, getUserBadges, type User, type GameResult, type UserBadge } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useAuth } from '../contexts/AuthContext'
 import { useIsMobile } from '../lib/responsive'
@@ -114,6 +114,35 @@ const ACCENT_MAP: Record<string, string> = {
 
 const TABS = ['Overview', 'Badges', 'History', 'Settings']
 
+const BADGE_CATALOG = [
+  { id: 'first_quiz',     emoji: '🏆', name: 'First Quiz',      desc: 'Completed your first round',         accent: '#FFCD00' },
+  { id: 'speed_reader',   emoji: '⚡', name: 'Speed Reader',     desc: 'Answered in under 5 seconds',        accent: '#1565C0' },
+  { id: 'finance_101',    emoji: '🎓', name: 'Finance 101',      desc: 'Completed chapter 1 basics',         accent: '#2D9A4E' },
+  { id: 'xp_500',         emoji: '💰', name: '500 XP Club',      desc: 'Earn 500 XP total',                  accent: '#FF7B25' },
+  { id: 'streak_7',       emoji: '🔥', name: '7-Day Streak',     desc: 'Log in 7 days straight',             accent: '#E63946' },
+  { id: 'perfect_round',  emoji: '🌟', name: 'Perfect Round',    desc: 'Score 100% on any quiz',             accent: '#FFCD00' },
+  { id: 'sharpshooter',   emoji: '🎯', name: 'Sharpshooter',     desc: '90% accuracy overall',               accent: '#7B2D8B' },
+  { id: 'bull_market',    emoji: '📈', name: 'Bull Market',      desc: 'Win 10 games in a row',              accent: '#2D9A4E' },
+  { id: 'fraud_fighter',  emoji: '🕵️', name: 'Fraud Fighter',   desc: 'Spot 5+ frauds in one game',         accent: '#1565C0' },
+  { id: 'wise_swiper',    emoji: '🃏', name: 'Wise Swiper',      desc: 'Perfect score on Card Swipe',        accent: '#FF7B25' },
+  { id: 'decision_maker', emoji: '🧠', name: 'Decision Maker',   desc: 'Make a brilliant decision',          accent: '#7B2D8B' },
+  { id: 'streak_30',      emoji: '🔥', name: '30-Day Streak',    desc: 'Log in 30 days straight',            accent: '#E63946' },
+  { id: 'xp_1000',        emoji: '💰', name: '1K XP Club',       desc: 'Earn 1,000 XP total',                accent: '#FF7B25' },
+  { id: 'xp_5000',        emoji: '⚡', name: '5K XP Club',       desc: 'Earn 5,000 XP total',                accent: '#1565C0' },
+  { id: 'xp_10000',       emoji: '💎', name: '10K XP Legend',    desc: 'Earn 10,000 XP total',               accent: '#FFCD00' },
+  { id: 'community_100',  emoji: '👥', name: 'Community 100',    desc: 'Join a 100-member community',        accent: '#2D9A4E' },
+  { id: 'night_owl',      emoji: '🦉', name: 'Night Owl',        desc: 'Play after midnight',                accent: '#7B2D8B' },
+  { id: 'early_bird',     emoji: '🐦', name: 'Early Bird',       desc: 'Play before 7am',                    accent: '#FFCD00' },
+  { id: 'quiz_master',    emoji: '🧠', name: 'Quiz Master',      desc: 'Complete 20+ quiz games',            accent: '#FF7B25' },
+  { id: 'path_starter',   emoji: '🗺️', name: 'Path Starter',    desc: 'Complete your first path node',      accent: '#2D9A4E' },
+  { id: 'path_halfway',   emoji: '🏃', name: 'Halfway There',    desc: 'Complete 7 path nodes',              accent: '#1565C0' },
+  { id: 'path_complete',  emoji: '🏆', name: 'Path Complete',    desc: 'Complete all 15 path nodes',         accent: '#FFCD00' },
+  { id: 'top_10',         emoji: '🥇', name: 'Top 10',           desc: 'Reach top 10 on leaderboard',        accent: '#FFCD00' },
+  { id: 'top_100',        emoji: '🥈', name: 'Top 100',          desc: 'Reach top 100 on leaderboard',       accent: '#2D9A4E' },
+  { id: 'invite_3',       emoji: '📨', name: 'Connector',        desc: 'Invite 3 friends',                   accent: '#FF7B25' },
+  { id: 'comeback',       emoji: '💪', name: 'Comeback',         desc: 'Return after 7+ days away',          accent: '#E63946' },
+]
+
 const XP_LEVELS = [
   { min: 10000, label: 'Legend', xpMax: 15000 },
   { min: 5000,  label: 'Expert', xpMax: 10000 },
@@ -129,6 +158,7 @@ export default function Profile() {
   const [tab, setTab] = useState('Overview')
   const [user, setUser] = useState<User | null>(null)
   const [history, setHistory] = useState<GameResult[]>([])
+  const [earnedBadges, setEarnedBadges] = useState<UserBadge[]>([])
   const { signOut } = useAuth()
   const navigate = useNavigate()
 
@@ -137,6 +167,7 @@ export default function Profile() {
     if (!session) return
     getUser(session.id).then(setUser).catch(() => {})
     getUserGames(session.id).then(setHistory).catch(() => {})
+    getUserBadges(session.id).then(setEarnedBadges).catch(() => {})
   }, [])
 
   async function handleSignOut() {
@@ -394,40 +425,37 @@ export default function Profile() {
         )}
 
         {/* ── Tab: Badges ───────────────────────────────────────── */}
-        {tab === 'Badges' && (
-          <div style={{ background: paper, border: `3px solid ${ink}`, borderRadius: '2rem 1.8rem 2rem 1.9rem', boxShadow: `8px 8px 0 ${ink}`, padding: '28px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
-              {[
-                { icon: '🏆', label: 'First Quiz',     desc: 'Completed your first round', earned: true,  accent: '#FFCD00' },
-                { icon: '⚡', label: 'Speed Reader',    desc: 'Answered in under 5 seconds', earned: true, accent: '#1565C0' },
-                { icon: '🎓', label: 'Finance 101',     desc: 'Completed basics course',    earned: true,  accent: '#2D9A4E' },
-                { icon: '💰', label: '500 XP Club',     desc: 'Earn 500 XP total',          earned: false, accent: '#FF7B25' },
-                { icon: '🔥', label: '7-Day Streak',    desc: 'Log in 7 days straight',     earned: false, accent: '#E63946' },
-                { icon: '🌟', label: 'Perfect Round',   desc: 'Score 5/5 on any quiz',      earned: false, accent: '#FFCD00' },
-                { icon: '🎯', label: 'Sharpshooter',    desc: '90% accuracy overall',       earned: false, accent: '#7B2D8B' },
-                { icon: '📈', label: 'Bull Market',     desc: 'Win 10 games in a row',      earned: false, accent: '#2D9A4E' },
-              ].map(b => (
-                <div key={b.label} style={{
-                  border: `2.5px solid ${ink}`,
-                  borderRadius: '1.4rem 1.6rem 1.4rem 1.5rem',
-                  background: b.earned ? b.accent : surface,
-                  boxShadow: `4px 4px 0 ${ink}`,
-                  padding: '16px', textAlign: 'center',
-                  opacity: b.earned ? 1 : 0.45,
-                  transition: 'transform 0.12s, box-shadow 0.12s',
-                  cursor: 'default',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
-                >
-                  <div style={{ fontSize: '2.4rem', marginBottom: '6px' }}>{b.earned ? b.icon : '🔒'}</div>
-                  <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', marginBottom: '4px', color: '#1A0800' }}>{b.label}</div>
-                  <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.64rem', opacity: 0.65, color: '#1A0800', lineHeight: 1.4 }}>{b.desc}</div>
-                </div>
-              ))}
+        {tab === 'Badges' && (() => {
+          const earnedIds = new Set(earnedBadges.map(b => b.badge_id))
+          return (
+            <div style={{ background: paper, border: `3px solid ${ink}`, borderRadius: '2rem 1.8rem 2rem 1.9rem', boxShadow: `8px 8px 0 ${ink}`, padding: '28px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '16px' }}>
+                {BADGE_CATALOG.map(b => {
+                  const earned = earnedIds.has(b.id)
+                  return (
+                    <div key={b.id} style={{
+                      border: `2.5px solid ${ink}`,
+                      borderRadius: '1.4rem 1.6rem 1.4rem 1.5rem',
+                      background: earned ? b.accent : surface,
+                      boxShadow: `4px 4px 0 ${ink}`,
+                      padding: '16px', textAlign: 'center',
+                      opacity: earned ? 1 : 0.45,
+                      transition: 'transform 0.12s, box-shadow 0.12s',
+                      cursor: 'default',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
+                    >
+                      <div style={{ fontSize: '2.4rem', marginBottom: '6px' }}>{earned ? b.emoji : '🔒'}</div>
+                      <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', marginBottom: '4px', color: '#1A0800' }}>{b.name}</div>
+                      <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.64rem', opacity: 0.65, color: '#1A0800', lineHeight: 1.4 }}>{b.desc}</div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* ── Tab: History ──────────────────────────────────────── */}
         {tab === 'History' && (

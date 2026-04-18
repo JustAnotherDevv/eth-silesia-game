@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useIsMobile } from '../lib/responsive'
+import { play, preload } from '../lib/sounds'
 
 const ink = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
@@ -128,6 +129,8 @@ export default function FraudSpotter() {
   const offer = OFFERS[offerIdx]
 
   function startGame() {
+    preload()
+    play('click')
     setPhase('playing'); setOfferIdx(0); setTimeLeft(TIMER_MAX)
     setAnswered(null); setAnswers([]); setStreak(0); setMaxStreak(0); setTotalXP(0)
   }
@@ -140,6 +143,8 @@ export default function FraudSpotter() {
     const speed     = timeLeft > 6 ? 30 : 0
     const earned    = isCorrect ? Math.round((offer.xp + speed) * mult) : 0
 
+    play(isCorrect ? 'correct' : 'wrong')
+
     setAnswered({ choice, isCorrect, earned })
     setStreak(newStreak)
     setMaxStreak(prev => Math.max(prev, newStreak))
@@ -149,6 +154,7 @@ export default function FraudSpotter() {
     setTimeout(() => {
       const next = offerIdx + 1
       if (next >= OFFERS.length) {
+        play('complete')
         setPhase('results')
       } else {
         setOfferIdx(next)
@@ -163,7 +169,10 @@ export default function FraudSpotter() {
     const session = getSession()
     if (!session) return
     const correct = answers.filter(Boolean).length
-    submitGame({ userId: session.id, gameType: 'fraud', xpEarned: totalXP, score: correct, total: OFFERS.length, metadata: { maxStreak } }).catch(() => {})
+    play('xp-gain')
+    submitGame({ userId: session.id, gameType: 'fraud', xpEarned: totalXP, score: correct, total: OFFERS.length, metadata: { maxStreak } })
+      .then(res => { if (res.newBadges.length > 0) setTimeout(() => play('badge'), 800) })
+      .catch(() => {})
   }, [phase])
 
   // Timer

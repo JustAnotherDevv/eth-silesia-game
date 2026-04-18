@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useIsMobile } from '../lib/responsive'
+import { play, preload } from '../lib/sounds'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -540,6 +541,7 @@ const OUTCOME_CONFIG: Record<Outcome, { label: string; accent: string; bg: strin
 
 export default function Decision() {
   const isMobile = useIsMobile()
+  useEffect(() => { preload() }, [])
   const [phase,        setPhase]        = useState<Phase>('intro')
   const [scenarioIdx,  setScenarioIdx]  = useState(0)
   const [chosenChoice, setChosenChoice] = useState<Choice | null>(null)
@@ -548,8 +550,8 @@ export default function Decision() {
   const scenario = SCENARIOS[scenarioIdx]
 
   function handleChoose(choice: Choice) {
+    play('click')
     setChosenChoice(choice)
-    // brief pause for exit animation, then consequence phase
     setTimeout(() => setPhase('consequence'), 600)
   }
 
@@ -564,6 +566,7 @@ export default function Decision() {
   // ── Submit to API on verdict ────────────────────────────────
   useEffect(() => {
     if (phase !== 'verdict' || !chosenChoice) return
+    play(chosenChoice.outcome === 'brilliant' ? 'complete' : chosenChoice.outcome === 'risky' ? 'wrong' : 'complete')
     const session = getSession()
     if (!session) return
     submitGame({ userId: session.id, gameType: 'decision', xpEarned: chosenChoice.xp, score: 1, total: 1, metadata: { outcome: chosenChoice.outcome, scenario: scenario.id } }).catch(() => {})

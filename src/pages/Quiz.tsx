@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useIsMobile } from '../lib/responsive'
+import { play, preload } from '../lib/sounds'
 
 // ── Questions ─────────────────────────────────────────────────
 const QUESTIONS = [
@@ -91,7 +92,10 @@ export default function Quiz() {
     if (phase !== 'results') return
     const session = getSession()
     if (!session) return
-    submitGame({ userId: session.id, gameType: 'quiz', xpEarned: totalXP, score: correct, total: QUESTIONS.length }).catch(() => {})
+    play('xp-gain')
+    submitGame({ userId: session.id, gameType: 'quiz', xpEarned: totalXP, score: correct, total: QUESTIONS.length })
+      .then(res => { if (res.newBadges.length > 0) setTimeout(() => play('badge'), 800) })
+      .catch(() => {})
   }, [phase])
 
   // ── Timer ───────────────────────────────────────────────────
@@ -104,6 +108,8 @@ export default function Quiz() {
 
   // ── Actions ─────────────────────────────────────────────────
   function startQuiz() {
+    preload()
+    play('click')
     setPhase('playing'); setQIdx(0); setSelected(null)
     setTimeLeft(TIMER_MAX); setTotalXP(0); setCorrect(0); setXpPop(null)
   }
@@ -115,11 +121,14 @@ export default function Quiz() {
     const q = QUESTIONS[qIdx]
     const isCorrect = optionIdx === q.correct
     if (isCorrect) {
+      play('correct')
       const bonus = Math.round((timeLeft / TIMER_MAX) * 50)
       const earned = q.xp + bonus
       setTotalXP(prev => prev + earned)
       setCorrect(prev => prev + 1)
       setXpPop(earned)
+    } else {
+      play('wrong')
     }
     setTimeout(() => {
       setXpPop(null)
@@ -127,6 +136,7 @@ export default function Quiz() {
         setQIdx(i => i + 1); setSelected(null)
         setTimeLeft(TIMER_MAX); setPhase('playing')
       } else {
+        play('complete')
         setPhase('results')
       }
     }, 2200)

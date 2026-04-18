@@ -86,3 +86,25 @@ users.get('/:id/orgs', async (c) => {
   if (error) return c.json({ error: error.message }, 500)
   return c.json(data?.map(row => row.orgs).filter(Boolean) ?? [])
 })
+
+users.get('/:id/badges', async (c) => {
+  const { data, error } = await supabase
+    .from('user_badges')
+    .select('badge_id, earned_at, badges(emoji, name, description)')
+    .eq('user_id', c.req.param('id'))
+    .order('earned_at', { ascending: false })
+
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json(data ?? [])
+})
+
+users.get('/:id/path-progress', async (c) => {
+  const { data, error } = await supabase
+    .from('path_progress')
+    .select('node_id, completed_at')
+    .eq('user_id', c.req.param('id'))
+    .order('completed_at', { ascending: true })
+
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json(data ?? [])
+})

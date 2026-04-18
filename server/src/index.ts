@@ -8,6 +8,7 @@ import { leaderboard } from './routes/leaderboard.js'
 import { orgs } from './routes/orgs.js'
 import { members } from './routes/members.js'
 import { news } from './routes/news.js'
+import { auth } from './routes/auth.js'
 
 const app = new Hono()
 
@@ -21,6 +22,7 @@ app.route('/api/leaderboard', leaderboard)
 app.route('/api/orgs', orgs)
 app.route('/api/members', members)
 app.route('/api/news', news)
+app.route('/api/auth', auth)
 
 serve({ fetch: app.fetch, port: 3001 }, () => {
   console.log('Server running on http://localhost:3001')

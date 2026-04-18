@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useIsMobile } from '../lib/responsive'
+import { submitGame, getPathProgress } from '../lib/api'
+import { getSession } from '../lib/session'
+import { play, preload } from '../lib/sounds'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -289,11 +292,27 @@ const FULL_PATH = [
   `L ${CX.B} ${RY[4]} L ${CX.C} ${RY[4]}`,
 ].join(' ')
 
-const PROGRESS_PATH = [
-  `M ${CX.A} ${RY[0]} L ${CX.B} ${RY[0]} L ${CX.C} ${RY[0]}`,
+const ROW_CURVES = [
   `C ${CX.C + 65} ${RY[0]}, ${CX.C + 65} ${RY[1]}, ${CX.C} ${RY[1]}`,
-  `L ${CX.B} ${RY[1]}`,
-].join(' ')
+  `C ${CX.A - 65} ${RY[1]}, ${CX.A - 65} ${RY[2]}, ${CX.A} ${RY[2]}`,
+  `C ${CX.C + 65} ${RY[2]}, ${CX.C + 65} ${RY[3]}, ${CX.C} ${RY[3]}`,
+  `C ${CX.A - 65} ${RY[3]}, ${CX.A - 65} ${RY[4]}, ${CX.A} ${RY[4]}`,
+]
+
+function computeProgressPath(completedCount: number): string {
+  if (completedCount === 0) return `M ${POSITIONS[0][0]} ${POSITIONS[0][1]}`
+  const parts: string[] = [`M ${POSITIONS[0][0]} ${POSITIONS[0][1]}`]
+  for (let i = 1; i < completedCount; i++) {
+    const prevRow = Math.floor((i - 1) / 3)
+    const currRow = Math.floor(i / 3)
+    if (currRow > prevRow) {
+      parts.push(ROW_CURVES[prevRow])
+    } else {
+      parts.push(`L ${POSITIONS[i][0]} ${POSITIONS[i][1]}`)
+    }
+  }
+  return parts.join(' ')
+}
 
 // ─── Mascots ──────────────────────────────────────────────────
 
@@ -668,8 +687,8 @@ const CHOICE_COLORS = ['#1565C0', '#FF7B25', '#2D9A4E', '#7B2D8B']
 const CHOICE_LABELS = ['A', 'B', 'C', 'D']
 
 function GamePhase({
-  lesson, chapter, onComplete,
-}: { lesson: LessonDef; chapter: Chapter; onComplete: (score: number) => void }) {
+  lesson, chapter, onComplete, isMobile,
+}: { lesson: LessonDef; chapter: Chapter; onComplete: (score: number) => void; isMobile: boolean }) {
   const [qIdx,     setQIdx]     = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
   const [revealed, setRevealed] = useState(false)
@@ -682,10 +701,12 @@ function GamePhase({
     if (revealed) return
     setSelected(i)
     setRevealed(true)
-    if (i === q.correct) scoreRef.current += 1
+    if (i === q.correct) { scoreRef.current += 1; play('correct') }
+    else play('wrong')
   }
 
   function advance() {
+    play('click')
     if (qIdx < questions.length - 1) {
       setQIdx(n => n + 1)
       setSelected(null)
@@ -841,9 +862,14 @@ function GamePhase({
 const CONFETTI_EMOJIS = ['🪙', '⭐', '💰', '✨', '🪙', '⭐', '💰', '✨', '🪙', '⭐', '💰', '✨', '🪙', '⭐', '💰', '✨']
 
 function VictoryPhase({
-  score, total, xp, onClose, onReplay,
-}: { score: number; total: number; xp: number; onClose: () => void; onReplay: () => void }) {
+  score, total, xp, onClose, onReplay, userId, nodeId, onCompleted,
+}: {
+  score: number; total: number; xp: number
+  onClose: () => void; onReplay: () => void
+  userId?: string | null; nodeId?: number; onCompleted?: (nodeId: number) => void
+}) {
   const [displayXP, setDisplayXP] = useState(0)
+  const submitted = useRef(false)
 
   const earnedXP = score === total ? xp : score >= 2 ? Math.round(xp * 0.6) : Math.round(xp * 0.3)
 
@@ -864,6 +890,18 @@ function VictoryPhase({
     }, 30)
     return () => clearInterval(interval)
   }, [earnedXP])
+
+  useEffect(() => {
+    if (!userId || nodeId == null || submitted.current) return
+    submitted.current = true
+    play('xp-gain')
+    submitGame({ userId, gameType: 'path', xpEarned: earnedXP, score, total, metadata: { nodeId } })
+      .then(res => {
+        if (res.newBadges.length > 0) setTimeout(() => play('badge'), 800)
+        onCompleted?.(nodeId)
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{
@@ -1018,11 +1056,16 @@ function PhaseIndicator({ current, chapter }: { current: ModalPhase; chapter: Ch
 // ─── Lesson Modal ─────────────────────────────────────────────
 
 function LessonModal({
-  node, chapter, onClose,
-}: { node: PathNodeData; chapter: Chapter; onClose: () => void }) {
+  node, chapter, onClose, isMobile, userId, onCompleted,
+}: {
+  node: PathNodeData; chapter: Chapter; onClose: () => void; isMobile: boolean
+  userId?: string | null; onCompleted?: (nodeId: number) => void
+}) {
   const [phase,      setPhase]      = useState<ModalPhase>('intro')
   const [finalScore, setFinalScore] = useState(0)
   const [gameKey,    setGameKey]    = useState(0)
+
+  useEffect(() => { preload(); play('modal-open') }, [])
 
   const lesson = LESSONS[node.id]
 
@@ -1128,7 +1171,7 @@ function LessonModal({
         ) : phase === 'lesson' ? (
           <LessonPhase lesson={lesson} chapter={chapter} onNext={() => setPhase('game')} />
         ) : phase === 'game' ? (
-          <GamePhase key={gameKey} lesson={lesson} chapter={chapter} onComplete={handleComplete} />
+          <GamePhase key={gameKey} lesson={lesson} chapter={chapter} onComplete={handleComplete} isMobile={isMobile} />
         ) : (
           <VictoryPhase
             score={finalScore}
@@ -1136,6 +1179,9 @@ function LessonModal({
             xp={node.xp}
             onClose={onClose}
             onReplay={handleReplay}
+            userId={userId}
+            nodeId={node.id}
+            onCompleted={onCompleted}
           />
         )}
       </div>
@@ -1389,10 +1435,10 @@ function DetailCard({
 
 // ─── Progress Header ──────────────────────────────────────────
 
-function ProgressHeader() {
-  const done    = NODES.filter(n => n.status === 'completed').length
-  const totalXP = NODES.filter(n => n.status === 'completed').reduce((s, n) => s + n.xp, 0)
-  const pct     = Math.round((done / NODES.length) * 100)
+function ProgressHeader({ nodes }: { nodes: PathNodeData[] }) {
+  const done    = nodes.filter(n => n.status === 'completed').length
+  const totalXP = nodes.filter(n => n.status === 'completed').reduce((s, n) => s + n.xp, 0)
+  const pct     = Math.round((done / nodes.length) * 100)
   const chapter = CHAPTERS[Math.floor(done / 3)]
 
   return (
@@ -1460,16 +1506,47 @@ function ProgressHeader() {
 
 export default function Path() {
   const isMobile = useIsMobile()
-  const activeNode = NODES.find(n => n.status === 'active')!
-  const [selected,   setSelected]   = useState<PathNodeData>(activeNode)
-  const [modalNode,  setModalNode]  = useState<PathNodeData | null>(null)
+  const [completedIds, setCompletedIds] = useState<Set<number>>(new Set())
+  const [userId,       setUserId]       = useState<string | null>(null)
+  const [selectedId,   setSelectedId]   = useState<number>(5)
+  const [modalNode,    setModalNode]    = useState<PathNodeData | null>(null)
 
+  useEffect(() => {
+    const session = getSession()
+    if (!session) return
+    setUserId(session.id)
+    getPathProgress(session.id)
+      .then(items => {
+        const ids = new Set(items.map(item => parseInt(item.node_id)))
+        setCompletedIds(ids)
+        // Select the first non-completed node as active
+        for (let i = 1; i <= 15; i++) {
+          if (!ids.has(i)) { setSelectedId(i); break }
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  function nodeStatus(id: number): Status {
+    if (completedIds.has(id)) return 'completed'
+    if (id === 1 || completedIds.has(id - 1)) return 'active'
+    return 'locked'
+  }
+
+  const dynamicNodes: PathNodeData[] = NODES.map(n => ({ ...n, status: nodeStatus(n.id) }))
+
+  function handleNodeCompleted(nodeId: number) {
+    setCompletedIds(prev => new Set([...prev, nodeId]))
+  }
+
+  const selected = dynamicNodes.find(n => n.id === selectedId) ?? dynamicNodes[4]
   const selectedChapter = CHAPTERS.find(c => c.id === selected.chapter)!
   const chapterFirstIdx = CHAPTERS.map(ch => NODES.findIndex(n => n.chapter === ch.id))
+  const progressPath = computeProgressPath(completedIds.size)
 
   return (
     <div style={{ minHeight: '100vh', background: surface }}>
-      <ProgressHeader />
+      <ProgressHeader nodes={dynamicNodes} />
 
       {/* Scrollable path area */}
       <div style={{
@@ -1499,10 +1576,10 @@ export default function Path() {
             <path d={FULL_PATH}
               fill="none" stroke="color-mix(in srgb, var(--rh-ink) 18%, transparent)"
               strokeWidth="6" strokeLinecap="round"/>
-            <path d={PROGRESS_PATH}
+            <path d={progressPath}
               fill="none" stroke="url(#goldGrad)"
               strokeWidth="8" strokeLinecap="round" strokeDasharray="20 6"/>
-            <path d={PROGRESS_PATH}
+            <path d={progressPath}
               fill="none" stroke="#FFCD00"
               strokeWidth="4" strokeLinecap="round" opacity="0.35"/>
 
@@ -1569,13 +1646,13 @@ export default function Path() {
           ))}
 
           {/* Path nodes */}
-          {NODES.map((node, i) => (
+          {dynamicNodes.map((node, i) => (
             <PathNode
               key={node.id}
               node={node}
               pos={POSITIONS[i]}
               selected={selected.id === node.id}
-              onSelect={setSelected}
+              onSelect={n => setSelectedId(n.id)}
               onOpenLesson={setModalNode}
             />
           ))}
@@ -1591,6 +1668,9 @@ export default function Path() {
           node={modalNode}
           chapter={CHAPTERS.find(c => c.id === modalNode.chapter)!}
           onClose={() => setModalNode(null)}
+          isMobile={isMobile}
+          userId={userId}
+          onCompleted={handleNodeCompleted}
         />
       )}
     </div>

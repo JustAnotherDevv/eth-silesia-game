@@ -35,7 +35,7 @@ export const submitGame = (data: {
   score?: number
   total?: number
   metadata?: Record<string, unknown>
-}) => req<{ id: string; xpEarned: number; newXp: number; newStreak: number }>('POST', '/games', data)
+}) => req<{ id: string; xpEarned: number; newXp: number; newStreak: number; newBadges: string[] }>('POST', '/games', data)
 
 export const getUserGames = (userId: string) => req<GameResult[]>('GET', `/games/user/${userId}`)
 
@@ -74,6 +74,13 @@ export const getMembers = (params?: {
 }
 
 export const getMember = (slug: string) => req<ApiMember>('GET', `/members/${slug}`)
+
+// User badges & path progress
+export const getUserBadges = (userId: string) =>
+  req<UserBadge[]>('GET', `/users/${userId}/badges`)
+
+export const getPathProgress = (userId: string) =>
+  req<PathProgressItem[]>('GET', `/users/${userId}/path-progress`)
 
 // News
 export const getNews = () => req<NewsItem[]>('GET', '/news')
@@ -166,6 +173,17 @@ export interface ApiMember {
   orgs?: Array<{ id: string; name: string; emoji: string; color: string }>
   goals?: string[]
   isYou?: boolean
+}
+
+export interface UserBadge {
+  badge_id: string
+  earned_at: string
+  badges: { emoji: string; name: string; description: string } | null
+}
+
+export interface PathProgressItem {
+  node_id: string
+  completed_at: string
 }
 
 export interface NewsItem {

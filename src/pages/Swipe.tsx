@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useIsMobile } from '../lib/responsive'
+import { play, preload } from '../lib/sounds'
 
 const ink = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
@@ -122,10 +123,15 @@ export default function Swipe() {
     const session = getSession()
     if (!session) return
     const correct = answers.filter(Boolean).length
-    submitGame({ userId: session.id, gameType: 'swipe', xpEarned: totalXP, score: correct, total: CARDS.length, metadata: { maxStreak } }).catch(() => {})
+    play('xp-gain')
+    submitGame({ userId: session.id, gameType: 'swipe', xpEarned: totalXP, score: correct, total: CARDS.length, metadata: { maxStreak } })
+      .then(res => { if (res.newBadges.length > 0) setTimeout(() => play('badge'), 800) })
+      .catch(() => {})
   }, [phase])
 
   function startGame() {
+    preload()
+    play('click')
     setPhase('playing'); setIdx(0); setDragX(0); setDragging(false)
     setFlying(null); setLastResult(null); setAnswers([])
     setStreak(0); setMaxStreak(0); setTotalXP(0)
@@ -138,6 +144,14 @@ export default function Swipe() {
     const newStreak = isCorrect ? streak + 1 : 0
     const mult      = streak >= 4 ? 2 : streak >= 2 ? 1.5 : 1
     const earned    = isCorrect ? Math.round(card.xp * mult) : 0
+
+    play(dir === 'wise' ? 'swipe-yes' : 'swipe-no')
+    if (isCorrect) {
+      play('correct', 0.3)
+      if (newStreak === 3 || newStreak === 5) setTimeout(() => play('streak'), 150)
+    } else {
+      play('wrong', 0.3)
+    }
 
     setFlying(dir)
     setLastResult({ isCorrect, explanation: card.explanation, earned })
@@ -152,7 +166,7 @@ export default function Swipe() {
       setIdx(nextIdx)
       setFlying(null)
       setDragX(0)
-      if (nextIdx >= CARDS.length) setTimeout(() => setPhase('results'), 400)
+      if (nextIdx >= CARDS.length) setTimeout(() => { play('complete'); setPhase('results') }, 400)
     }, 380)
 
     setTimeout(() => setLastResult(null), 2200)

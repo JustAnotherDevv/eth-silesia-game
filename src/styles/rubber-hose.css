@@ -17,6 +17,19 @@
 @import "@fontsource-variable/fredoka";
 @import "@fontsource/fredoka-one";
 
+/* Remap 'Fredoka One' → Fredoka Variable so it renders consistently with the
+   rest of the design system. Range descriptor covers all weight requests;
+   being declared last, this wins over the fixed-weight original above. */
+@font-face {
+  font-family: 'Fredoka One';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource-variable/fredoka/files/fredoka-latin-wght-normal.woff2') format('woff2-variations'),
+       url('../../node_modules/@fontsource-variable/fredoka/files/fredoka-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
 /* ── 2. Tailwind v4 Custom Tokens ────────────────────────── */
 @theme inline {
   /* Brand palette – these never change between modes */
@@ -469,11 +482,18 @@
 
   h1 {
     font-family: 'Fredoka One', cursive;
+    font-weight: 650;
     letter-spacing: 0.03em;
     text-shadow: 2px 2px 0 color-mix(in srgb, var(--rh-ink) 18%, transparent);
   }
-  h2, h3, h4, h5, h6 {
+  h2, h3 {
     font-family: 'Fredoka One', cursive;
+    font-weight: 620;
+    letter-spacing: 0.03em;
+  }
+  h4, h5, h6 {
+    font-family: 'Fredoka One', cursive;
+    font-weight: 580;
     letter-spacing: 0.03em;
   }
 

@@ -1,5 +1,7 @@
+import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from './ThemeToggle'
+import { OrgSwitcher } from './OrgSwitcher'
 
 const LINKS = [
   { to: '/',            label: 'Home' },
@@ -41,6 +43,8 @@ export function Nav() {
         whiteSpace: 'nowrap',
         opacity: 0.9,
       }}>★ XP Gazette</Link>
+
+      <OrgSwitcher />
 
       {/* Nav links */}
       {LINKS.map(({ to, label }) => {

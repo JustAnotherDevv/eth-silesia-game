@@ -10,6 +10,8 @@ const LINKS = [
   { to: '/design',      label: 'Design' },
   { to: '/path',        label: 'My Path' },
   { to: '/decision',    label: 'Decision Room' },
+  { to: '/swipe',       label: 'Card Swipe' },
+  { to: '/fraud',       label: 'Fraud Spotter' },
   { to: '/community',   label: 'Community' },
 ]
 

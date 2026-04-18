@@ -12,6 +12,8 @@ import Leaderboard from './pages/Leaderboard'
 import Decision from './pages/Decision'
 import Path from './pages/Path'
 import Onboarding from './pages/Onboarding'
+import Swipe from './pages/Swipe'
+import FraudSpotter from './pages/FraudSpotter'
 import Community from './pages/Community'
 import MemberProfile from './pages/MemberProfile'
 import AdminPanel from './pages/AdminPanel'
@@ -39,6 +41,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/community" element={<Layout><Community /></Layout>} />
         <Route path="/community/:slug" element={<Layout><MemberProfile /></Layout>} />
         <Route path="/admin" element={<Layout><AdminPanel /></Layout>} />
+        <Route path="/swipe" element={<Layout><Swipe /></Layout>} />
+        <Route path="/fraud" element={<Layout><FraudSpotter /></Layout>} />
         <Route path="/onboarding" element={<Onboarding />} />
       </Routes>
     </BrowserRouter>

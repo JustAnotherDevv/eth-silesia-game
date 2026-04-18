@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { getUser } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 const FLIP_MS   = 700
 const ink    = 'var(--rh-ink)'
@@ -276,6 +277,7 @@ type Spread = {
 // ─────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const isMobile = useIsMobile()
   const [player,    setPlayer]    = useState(DEFAULT_PLAYER)
   const [idx,       setIdx]       = useState(0)
   const [flipping,  setFlipping]  = useState(false)
@@ -520,6 +522,62 @@ export default function Home() {
           )}
         </div>
 
+      </div>
+    )
+  }
+
+  if (isMobile) {
+    return (
+      <div style={{ minHeight: '100vh', background: surface, padding: '16px 16px 72px' }}>
+        {/* Masthead */}
+        <div style={{ textAlign: 'center', padding: '16px 12px', borderBottom: `3px double ${ink}`, marginBottom: '16px', border: `3px solid ${ink}`, borderRadius: '1.2rem', background: paper, marginBottom: '12px' }}>
+          <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2rem,10vw,3.2rem)', lineHeight: 1, margin: '0 0 4px', letterSpacing: '-0.01em' }}>The XP Gazette</h1>
+          <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', opacity: 0.55, margin: 0 }}>"All The Financial News Fit To Play"</p>
+        </div>
+
+        {/* Player card */}
+        <div style={{ border: `2.5px solid ${ink}`, borderRadius: '1.2rem', boxShadow: `4px 4px 0 ${ink}`, overflow: 'hidden', marginBottom: '14px', background: paper }}>
+          <div style={{ background: surface, borderBottom: `2px solid ${ink}`, padding: '7px 14px', fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Your Profile</span><span>★</span>
+          </div>
+          <div style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: `3px solid ${ink}`, background: '#FFCD00', boxShadow: `3px 3px 0 ${ink}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', flexShrink: 0 }}>{player.avatar}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1rem' }}>{player.name}</div>
+              <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.62rem', textTransform: 'uppercase', opacity: 0.55 }}>Level {player.level} · {player.xp}/{player.xpMax} XP</div>
+              <div style={{ marginTop: '6px', height: '6px', borderRadius: '9999px', background: surface, border: `1.5px solid ${ink}`, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min((player.xp/player.xpMax)*100, 100)}%`, background: '#FFCD00', borderRadius: '9999px' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', borderRadius: '9999px', border: `2px solid ${ink}`, background: '#FF7B25', color: '#FEF9EE', flexShrink: 0 }}>
+              <span>🔥</span><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.75rem' }}>{player.streak}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Game modes */}
+        {GAME_MODES_DATA.map(m => (
+          <Link key={m.tag} to={m.href} style={{ display: 'block', textDecoration: 'none', color: ink, border: `2.5px solid ${ink}`, borderRadius: '1.2rem', boxShadow: `4px 4px 0 ${ink}`, overflow: 'hidden', marginBottom: '12px', background: paper }}>
+            <div style={{ background: m.accent, borderBottom: `2px solid ${ink}`, padding: '6px 14px', fontFamily: "'Fredoka One', cursive", fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#1A0800' }}>{m.tag}</div>
+            <div style={{ padding: '14px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <span style={{ fontSize: '2.4rem', flexShrink: 0 }}>{m.emoji}</span>
+              <div>
+                <h3 style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1rem', lineHeight: 1.2, margin: '0 0 4px' }}>{m.headline}</h3>
+                <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.8rem', opacity: 0.7, margin: 0, lineHeight: 1.4 }}>{m.body}</p>
+              </div>
+            </div>
+          </Link>
+        ))}
+
+        {/* Breaking ticker */}
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, height: '36px', borderTop: `3px solid ${ink}`, display: 'flex', alignItems: 'center', overflow: 'hidden', background: '#E63946', color: '#FEF9EE' }}>
+          <div style={{ flexShrink: 0, height: '100%', display: 'flex', alignItems: 'center', padding: '0 10px', background: '#1A0800', color: '#FFCD00', fontFamily: "'Fredoka One', cursive", fontSize: '0.62rem', letterSpacing: '0.1em', borderRight: `3px solid ${ink}`, whiteSpace: 'nowrap' }}>BREAKING</div>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <span style={{ display: 'inline-block', whiteSpace: 'nowrap', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.72rem', animation: 'ticker-scroll 55s linear infinite' }}>
+              {[...TICKER_ITEMS,...TICKER_ITEMS].join('   ·   ')}
+            </span>
+          </div>
+        </div>
       </div>
     )
   }

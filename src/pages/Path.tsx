@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useIsMobile } from '../lib/responsive'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -758,7 +759,7 @@ function GamePhase({
 
       {/* Choices 2×2 */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px',
+        display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px',
       }}>
         {q.choices.map((choice, i) => (
           <button
@@ -1458,6 +1459,7 @@ function ProgressHeader() {
 // ─── Main Page ────────────────────────────────────────────────
 
 export default function Path() {
+  const isMobile = useIsMobile()
   const activeNode = NODES.find(n => n.status === 'active')!
   const [selected,   setSelected]   = useState<PathNodeData>(activeNode)
   const [modalNode,  setModalNode]  = useState<PathNodeData | null>(null)

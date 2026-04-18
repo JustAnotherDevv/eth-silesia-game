@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getMembers, getMember } from '../lib/api'
 import type { ApiMember } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -473,6 +474,7 @@ function ProfileModal({ base, detail, onClose }: {
 
 // ─── Main page ────────────────────────────────────────────────────
 export default function Community() {
+  const isMobile = useIsMobile()
   const [members,  setMembers]  = useState<ApiMember[]>([])
   const [loading,  setLoading]  = useState(true)
   const [search,   setSearch]   = useState('')
@@ -552,8 +554,8 @@ export default function Community() {
             </div>
 
             <div style={{
-              display:'grid', gridTemplateColumns:'1fr auto',
-              alignItems:'center', padding:'24px 28px', gap:'20px',
+              display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto',
+              alignItems:'center', padding: isMobile ? '16px' : '24px 28px', gap:'20px',
             }}>
               <div>
                 <h1 style={{
@@ -581,9 +583,11 @@ export default function Community() {
                 </div>
               </div>
 
-              <div style={{ flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <CommunityHeroSVG />
-              </div>
+              {!isMobile && (
+                <div style={{ flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <CommunityHeroSVG />
+                </div>
+              )}
             </div>
 
             {/* Online-now strip */}
@@ -624,7 +628,7 @@ export default function Community() {
           {/* ── Search + Filters ──────────────────────────── */}
           <div style={{ display:'flex', gap:'10px', marginBottom:'22px', flexWrap:'wrap', alignItems:'center' }}>
             {/* Search input */}
-            <div style={{ position:'relative', flex:'0 0 255px' }}>
+            <div style={{ position:'relative', flex: isMobile ? '1 1 100%' : '0 0 255px' }}>
               <span style={{
                 position:'absolute', left:'14px', top:'50%', transform:'translateY(-50%)',
                 fontSize:'0.9rem', opacity:0.45, pointerEvents:'none',
@@ -693,7 +697,7 @@ export default function Community() {
           ) : (
             <div style={{
               display:'grid',
-              gridTemplateColumns:'repeat(auto-fill, minmax(215px, 1fr))',
+              gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(150px, 1fr))' : 'repeat(auto-fill, minmax(215px, 1fr))',
               gap:'16px',
             }}>
               {filtered.map((m, i) => (

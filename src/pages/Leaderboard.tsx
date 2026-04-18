@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { getLeaderboard, getLeaderboardStats, type LeaderboardEntry } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -137,6 +138,7 @@ const CATEGORIES = ['All Time', 'This Week', 'This Month']
 
 export default function Leaderboard() {
   const [cat, setCat] = useState('All Time')
+  const isMobile = useIsMobile()
   const [players, setPlayers] = useState<(LeaderboardEntry & { isYou?: boolean; badges?: number; change?: number })[]>([])
   const [stats, setStats] = useState({ totalUsers: 0, activeToday: 0, maxStreak: 0 })
 
@@ -164,7 +166,7 @@ export default function Leaderboard() {
       backgroundSize: '22px 22px', backgroundPosition: '0 0, 11px 11px',
       padding: '32px 24px 64px',
     }}>
-      <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '780px', margin: '0 auto', padding: isMobile ? '0' : undefined }}>
 
         {/* ── Header card ──────────────────────────────────────── */}
         <div style={{
@@ -189,7 +191,7 @@ export default function Leaderboard() {
             }}>★ HALL OF FAME ★</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', padding: '24px 28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', alignItems: 'center', padding: isMobile ? '16px' : '24px 28px' }}>
             <div>
               <h1 style={{
                 fontFamily: "'Fredoka One', cursive",
@@ -203,7 +205,7 @@ export default function Leaderboard() {
               }}>
                 Top financial minds ranked by XP. Who'll claim the golden top hat?
               </p>
-              <div style={{ display: 'flex', gap: '6px', marginTop: '16px' }}>
+              <div style={{ display: 'flex', gap: '6px', marginTop: '16px', flexWrap: 'wrap' }}>
                 {[
                   { label: '🏆 Players', value: stats.totalUsers.toLocaleString() || '…' },
                   { label: '⚡ Active Today', value: String(stats.activeToday) || '…' },
@@ -261,24 +263,28 @@ export default function Leaderboard() {
           overflow: 'hidden',
         }}>
           {/* Column headers */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: '52px 1fr 100px 80px 80px 60px',
-            gap: '8px', padding: '10px 20px',
-            background: surface, borderBottom: `2px solid ${ink}`,
-            fontFamily: "'Fredoka One', cursive", fontSize: '0.58rem',
-            letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.65,
-          }}>
-            <span>#</span><span>Player</span>
-            <span style={{ textAlign: 'right' }}>XP</span>
-            <span style={{ textAlign: 'center' }}>Streak</span>
-            <span style={{ textAlign: 'center' }}>Badges</span>
-            <span style={{ textAlign: 'center' }}>±</span>
-          </div>
+          {!isMobile && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: '52px 1fr 100px 80px 80px 60px',
+              gap: '8px', padding: '10px 20px',
+              background: surface, borderBottom: `2px solid ${ink}`,
+              fontFamily: "'Fredoka One', cursive", fontSize: '0.58rem',
+              letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.65,
+            }}>
+              <span>#</span><span>Player</span>
+              <span style={{ textAlign: 'right' }}>XP</span>
+              <span style={{ textAlign: 'center' }}>Streak</span>
+              <span style={{ textAlign: 'center' }}>Badges</span>
+              <span style={{ textAlign: 'center' }}>±</span>
+            </div>
+          )}
 
           {PLAYERS.map((p, i) => (
             <div key={p.rank} style={{
-              display: 'grid', gridTemplateColumns: '52px 1fr 100px 80px 80px 60px',
-              gap: '8px', padding: '12px 20px', alignItems: 'center',
+              display: isMobile ? 'flex' : 'grid',
+              gridTemplateColumns: '52px 1fr 100px 80px 80px 60px',
+              alignItems: 'center', gap: isMobile ? '10px' : '8px',
+              padding: isMobile ? '12px 14px' : '12px 20px',
               borderBottom: i < PLAYERS.length-1 ? `1.5px solid color-mix(in srgb, ${ink} 12%, transparent)` : 'none',
               background: p.isYou ? `color-mix(in srgb, #FFCD00 18%, ${paper})` : 'transparent',
               transition: 'background 0.1s',
@@ -323,29 +329,41 @@ export default function Leaderboard() {
                 </div>
               </div>
 
-              {/* XP */}
-              <div style={{ textAlign: 'right', fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem' }}>
-                {p.xp.toLocaleString()}
-                <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.6rem', opacity: 0.5, marginLeft: '3px' }}>xp</span>
-              </div>
+              {/* XP + streak inline on mobile */}
+              {isMobile ? (
+                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                  <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem' }}>
+                    {p.xp.toLocaleString()} <span style={{ opacity: 0.5, fontSize: '0.6rem' }}>xp</span>
+                  </div>
+                  <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.62rem', opacity: 0.55 }}>🔥 {p.streak} days</div>
+                </div>
+              ) : (
+                <>
+                  {/* XP */}
+                  <div style={{ textAlign: 'right', fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem' }}>
+                    {p.xp.toLocaleString()}
+                    <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.6rem', opacity: 0.5, marginLeft: '3px' }}>xp</span>
+                  </div>
 
-              {/* Streak */}
-              <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <span style={{ fontSize: '0.9rem' }}>🔥</span>
-                <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem' }}>{p.streak}</span>
-              </div>
+                  {/* Streak */}
+                  <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.9rem' }}>🔥</span>
+                    <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem' }}>{p.streak}</span>
+                  </div>
 
-              {/* Badges */}
-              <div style={{ textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem' }}>
-                {p.badges ?? 0} <span style={{ opacity: 0.4, fontSize: '0.65rem' }}>🏆</span>
-              </div>
+                  {/* Badges */}
+                  <div style={{ textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem' }}>
+                    {p.badges ?? 0} <span style={{ opacity: 0.4, fontSize: '0.65rem' }}>🏆</span>
+                  </div>
 
-              {/* Change */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                {(p.change ?? 0) > 0 && <><UpArrowSVG /><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#2D9A4E' }}>{p.change}</span></>}
-                {(p.change ?? 0) < 0 && <><DownArrowSVG /><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#E63946' }}>{Math.abs(p.change ?? 0)}</span></>}
-                {(p.change ?? 0) === 0 && <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', opacity: 0.3 }}>—</span>}
-              </div>
+                  {/* Change */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                    {(p.change ?? 0) > 0 && <><UpArrowSVG /><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#2D9A4E' }}>{p.change}</span></>}
+                    {(p.change ?? 0) < 0 && <><DownArrowSVG /><span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#E63946' }}>{Math.abs(p.change ?? 0)}</span></>}
+                    {(p.change ?? 0) === 0 && <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', opacity: 0.3 }}>—</span>}
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -358,6 +376,7 @@ export default function Leaderboard() {
           boxShadow: `5px 5px 0 ${ink}`,
           padding: '16px 20px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
+          flexWrap: 'wrap',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '2rem' }} className="rh-animate-float">🎯</div>

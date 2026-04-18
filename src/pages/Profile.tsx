@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getUser, getUserGames, type User, type GameResult } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useAuth } from '../contexts/AuthContext'
+import { useIsMobile } from '../lib/responsive'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -175,13 +176,15 @@ export default function Profile() {
     accent: ACCENT_MAP[r.game_type] ?? '#FFCD00',
   }))
 
+  const isMobile = useIsMobile()
+
   return (
     <div style={{
       minHeight: '100vh',
       background: 'var(--rh-surface)',
       backgroundImage: 'radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px), radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px)',
       backgroundSize: '22px 22px', backgroundPosition: '0 0, 11px 11px',
-      padding: '32px 24px 64px',
+      padding: isMobile ? '16px 12px 64px' : '32px 24px 64px',
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
@@ -218,7 +221,7 @@ export default function Profile() {
             </div>
           </div>
 
-          <div style={{ padding: '0 28px 24px', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+          <div style={{ padding: isMobile ? '0 16px 20px' : '0 28px 24px', display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
             {/* Avatar — pulled up over banner */}
             <div style={{ flexShrink: 0, marginTop: '-40px', position: 'relative' }}>
               <div style={{
@@ -281,7 +284,7 @@ export default function Profile() {
         </div>
 
         {/* ── Tabs ──────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', background: paper, border: `2.5px solid ${ink}`, borderRadius: '9999px', padding: '5px', boxShadow: `4px 4px 0 ${ink}`, width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', background: paper, border: `2.5px solid ${ink}`, borderRadius: '9999px', padding: '5px', boxShadow: `4px 4px 0 ${ink}`, width: isMobile ? '100%' : 'fit-content', overflowX: 'auto' }}>
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem',
@@ -297,7 +300,7 @@ export default function Profile() {
 
         {/* ── Tab: Overview ─────────────────────────────────────── */}
         {tab === 'Overview' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '20px' }}>
 
             {/* Streak + weekly heatmap */}
             <SectionCard title="🔥 Current Streak">
@@ -429,26 +432,38 @@ export default function Profile() {
         {/* ── Tab: History ──────────────────────────────────────── */}
         {tab === 'History' && (
           <div style={{ background: paper, border: `3px solid ${ink}`, borderRadius: '2rem 1.8rem 2rem 1.9rem', boxShadow: `8px 8px 0 ${ink}`, overflow: 'hidden' }}>
-            <div style={{ background: surface, borderBottom: `2px solid ${ink}`, padding: '10px 20px', fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: '8px', opacity: 0.65 }}>
-              <span>Game</span><span style={{ textAlign: 'center' }}>Score</span><span style={{ textAlign: 'center' }}>XP</span><span style={{ textAlign: 'center' }}>Date</span>
-            </div>
+            {!isMobile && (
+              <div style={{ background: surface, borderBottom: `2px solid ${ink}`, padding: '10px 20px', fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: '8px', opacity: 0.65 }}>
+                <span>Game</span><span style={{ textAlign: 'center' }}>Score</span><span style={{ textAlign: 'center' }}>XP</span><span style={{ textAlign: 'center' }}>Date</span>
+              </div>
+            )}
             {[...HISTORY, ...HISTORY].map((h, i) => (
               <div key={i} style={{
-                display: 'grid', gridTemplateColumns: '1fr 80px 80px 80px', gap: '8px',
-                padding: '12px 20px', alignItems: 'center',
+                display: isMobile ? 'flex' : 'grid',
+                gridTemplateColumns: '1fr 80px 80px 80px', gap: '8px',
+                padding: isMobile ? '10px 14px' : '12px 20px', alignItems: 'center',
                 borderBottom: `1.5px solid color-mix(in srgb, ${ink} 12%, transparent)`,
                 transition: 'background 0.1s',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = surface)}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
                   <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: h.accent, border: `2px solid ${ink}`, flexShrink: 0 }}/>
                   <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem' }}>{h.mode}</span>
                 </div>
-                <div style={{ textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem' }}>{h.score}</div>
-                <div style={{ textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', color: '#2D9A4E' }}>{h.result}</div>
-                <div style={{ textAlign: 'center', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.7rem', opacity: 0.5 }}>{h.date}</div>
+                {isMobile ? (
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', color: '#2D9A4E' }}>{h.result}</div>
+                    <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.62rem', opacity: 0.5 }}>{h.date}</div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem' }}>{h.score}</div>
+                    <div style={{ textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', color: '#2D9A4E' }}>{h.result}</div>
+                    <div style={{ textAlign: 'center', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.7rem', opacity: 0.5 }}>{h.date}</div>
+                  </>
+                )}
               </div>
             ))}
           </div>

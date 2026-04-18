@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -538,6 +539,7 @@ const OUTCOME_CONFIG: Record<Outcome, { label: string; accent: string; bg: strin
 // ─── Main component ───────────────────────────────────────────
 
 export default function Decision() {
+  const isMobile = useIsMobile()
   const [phase,        setPhase]        = useState<Phase>('intro')
   const [scenarioIdx,  setScenarioIdx]  = useState(0)
   const [chosenChoice, setChosenChoice] = useState<Choice | null>(null)
@@ -736,7 +738,7 @@ export default function Decision() {
           }}>CONFIDENTIAL</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px', gap: '0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 180px', gap: '0' }}>
           {/* Story column */}
           <div style={{ padding: '28px 24px 24px', borderRight: `2px solid ${ink}` }}>
             <h2 style={{
@@ -811,7 +813,7 @@ export default function Decision() {
       </div>
 
       {/* 2×2 choice grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '18px' }}>
         {scenario.choices.map(choice => (
           <ChoiceCard
             key={choice.letter}

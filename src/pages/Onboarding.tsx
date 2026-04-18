@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createUser, getUser } from '../lib/api'
 import { setSession } from '../lib/session'
@@ -299,7 +299,31 @@ function Step2Identity({ name, username, avatarIdx, email, password, onChange, o
   onChange(k: string, v: unknown): void
   onNext(): void; onBack(): void
 }) {
-  const valid = name.trim().length > 0 && username.trim().length > 0 && email.trim().length > 0 && password.length >= 6
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
+  const [emailTouched, setEmailTouched] = useState(false)
+  const [passwordTouched, setPasswordTouched] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const passwordValid = password.length >= 6
+
+  useEffect(() => {
+    const slug = username.toLowerCase().replace(/[^a-z0-9_]/g, '')
+    if (!slug) { setUsernameStatus('idle'); return }
+    setUsernameStatus('checking')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`http://localhost:3001/api/members/${slug}`)
+        setUsernameStatus(res.ok ? 'taken' : 'available')
+      } catch {
+        setUsernameStatus('available')
+      }
+    }, 500)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [username])
+
+  const valid = name.trim().length > 0 && username.trim().length > 0 && emailValid && passwordValid && usernameStatus !== 'taken' && usernameStatus !== 'checking'
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '13px 18px', boxSizing: 'border-box',
@@ -321,25 +345,71 @@ function Step2Identity({ name, username, avatarIdx, email, password, onChange, o
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '22px' }}>
-        {[
-          { key: 'name',     label: 'YOUR NAME',  placeholder: 'e.g. Alex',           value: name,     transform: (v: string) => v },
-          { key: 'username', label: 'USERNAME',   placeholder: 'e.g. alex_investor',  value: username, transform: (v: string) => v.toLowerCase().replace(/[^a-z0-9_]/g, '') },
-          { key: 'email',    label: 'EMAIL',      placeholder: 'your@email.com',       value: email,    transform: (v: string) => v },
-          { key: 'password', label: 'PASSWORD (min 6 chars)', placeholder: '••••••••', value: password, transform: (v: string) => v },
-        ].map(f => (
-          <div key={f.key}>
-            <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem', display: 'block', marginBottom: '6px', opacity: 0.6, letterSpacing: '0.1em' }}>
-              {f.label}
-            </label>
+        {/* Name */}
+        <div>
+          <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem', display: 'block', marginBottom: '6px', opacity: 0.6, letterSpacing: '0.1em' }}>YOUR NAME</label>
+          <input value={name} onChange={e => onChange('name', e.target.value)} placeholder="e.g. Alex" type="text" style={inputStyle} />
+        </div>
+
+        {/* Email with validation */}
+        <div>
+          <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem', display: 'block', marginBottom: '6px', opacity: 0.6, letterSpacing: '0.1em' }}>EMAIL</label>
+          <input
+            value={email}
+            onChange={e => onChange('email', e.target.value)}
+            onBlur={() => setEmailTouched(true)}
+            placeholder="your@email.com"
+            type="email"
+            style={{ ...inputStyle, borderColor: emailTouched && !emailValid ? '#D32F2F' : ink, boxShadow: emailTouched && !emailValid ? `3px 3px 0 #D32F2F` : `3px 3px 0 ${ink}` }}
+          />
+          {emailTouched && !emailValid && (
+            <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', color: '#D32F2F', margin: '4px 0 0 4px' }}>Enter a valid email address</p>
+          )}
+        </div>
+
+        {/* Password with validation */}
+        <div>
+          <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem', display: 'block', marginBottom: '6px', opacity: 0.6, letterSpacing: '0.1em' }}>PASSWORD</label>
+          <input
+            value={password}
+            onChange={e => onChange('password', e.target.value)}
+            onBlur={() => setPasswordTouched(true)}
+            placeholder="min 6 characters"
+            type="password"
+            style={{ ...inputStyle, borderColor: passwordTouched && !passwordValid ? '#D32F2F' : ink, boxShadow: passwordTouched && !passwordValid ? `3px 3px 0 #D32F2F` : `3px 3px 0 ${ink}` }}
+          />
+          {passwordTouched && !passwordValid && (
+            <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', color: '#D32F2F', margin: '4px 0 0 4px' }}>Must be at least 6 characters</p>
+          )}
+        </div>
+
+        {/* Username with inline availability check */}
+        <div>
+          <label style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.76rem', display: 'block', marginBottom: '6px', opacity: 0.6, letterSpacing: '0.1em' }}>
+            USERNAME
+          </label>
+          <div style={{ position: 'relative' }}>
             <input
-              value={f.value}
-              onChange={e => onChange(f.key, f.transform(e.target.value))}
-              placeholder={f.placeholder}
-              type={f.key === 'password' ? 'password' : f.key === 'email' ? 'email' : 'text'}
-              style={inputStyle}
+              value={username}
+              onChange={e => onChange('username', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              placeholder="e.g. alex_investor"
+              type="text"
+              style={{ ...inputStyle, paddingRight: '110px' }}
             />
+            {usernameStatus !== 'idle' && (
+              <span style={{
+                position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
+                fontFamily: "'Fredoka One', cursive", fontSize: '0.75rem',
+                color: usernameStatus === 'available' ? '#2D9A4E' : usernameStatus === 'taken' ? '#D32F2F' : ink,
+                opacity: usernameStatus === 'checking' ? 0.5 : 1,
+              }}>
+                {usernameStatus === 'checking' && '⏳ checking…'}
+                {usernameStatus === 'available' && '✓ Available'}
+                {usernameStatus === 'taken' && '✗ Taken'}
+              </span>
+            )}
           </div>
-        ))}
+        </div>
       </div>
 
       <div style={{ marginBottom: '26px' }}>
@@ -809,9 +879,13 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
   const navigate = useNavigate()
   const org      = ORGS.find(o => o.id === orgId)
   const orgName  = isAdmin ? newCommunityName : (org ? org.name : orgId.replace('CUSTOM_', ''))
+  const [status,  setStatus]  = React.useState<'loading' | 'success' | 'error'>('loading')
   const [authErr, setAuthErr] = React.useState('')
+  const [retryKey, setRetryKey] = React.useState(0)
 
   React.useEffect(() => {
+    let cancelled = false
+
     if (isAdmin) {
       localStorage.setItem('xp_is_admin', 'true')
       localStorage.setItem('xp_community_name', newCommunityName)
@@ -823,26 +897,84 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
 
     async function register() {
       try {
-        const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
-        if (authError) { setAuthErr(authError.message); return }
-        const authId = authData.user?.id
-        const dbOrgId = ORG_DB_IDS[orgId]
-        const user = await createUser({
-          id: authId,
-          username,
-          displayName: name,
-          avatar: AVATARS[avatarIdx],
-          orgId: dbOrgId,
-          goals,
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, username, displayName: name, avatar: AVATARS[avatarIdx], orgId, goals }),
         })
-        setSession({ id: user.id, username: user.username, displayName: user.display_name, avatar: user.avatar })
-      } catch (err) {
+        if (cancelled) return
+        const data = await res.json()
+        if (cancelled) return
+
+        // 409 = username/email already registered (StrictMode double-invoke in dev) — skip to sign-in
+        if (!res.ok && res.status !== 409) {
+          setAuthErr(data.error ?? 'Registration failed')
+          setStatus('error')
+          return
+        }
+
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+        if (cancelled) return
+        if (signInError) { setAuthErr(signInError.message); setStatus('error'); return }
+
+        // Fetch fresh member data (handles both new registration and 409 re-run)
+        const memberRes = await fetch(`/api/members/${username}`)
+        if (cancelled) return
+        const member = memberRes.ok ? await memberRes.json() : null
+        if (cancelled) return
+
+        setSession({
+          id: member?.id ?? data.id,
+          username: member?.username ?? data.username ?? username,
+          displayName: member?.displayName ?? data.display_name ?? name,
+          avatar: member?.avatar ?? data.avatar ?? AVATARS[avatarIdx],
+        })
+        setStatus('success')
+      } catch {
+        if (cancelled) return
         setAuthErr('Account creation failed. Please try again.')
+        setStatus('error')
       }
     }
     register()
-  }, [])
+    return () => { cancelled = true }
+  }, [retryKey])
 
+  // Loading state while registering
+  if (status === 'loading') {
+    return (
+      <div style={{ textAlign: 'center', padding: '48px 0' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '16px' }}>⏳</div>
+        <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.4rem', marginBottom: '8px' }}>
+          Creating your account…
+        </div>
+        <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.85rem', opacity: 0.5 }}>
+          Just a moment!
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (status === 'error') {
+    return (
+      <div style={{ textAlign: 'center', padding: '48px 0' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '16px' }}>❌</div>
+        <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.4rem', marginBottom: '12px' }}>
+          Registration Failed
+        </div>
+        <div style={{ padding: '12px 16px', background: 'rgba(230,57,70,0.1)', border: '2px solid #E63946', borderRadius: '12px', marginBottom: '20px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.85rem', color: '#E63946' }}>
+          {authErr}
+        </div>
+        <button onClick={() => { setStatus('loading'); setAuthErr(''); setRetryKey(k => k + 1) }} style={{ ...btnBase, fontSize: '0.95rem', padding: '14px 36px', background: '#FFCD00', color: '#1A0800', boxShadow: `4px 4px 0 ${ink}` }}
+          onMouseEnter={e => lift(e)} onMouseLeave={e => unlift(e)}>
+          ↩ Try Again
+        </button>
+      </div>
+    )
+  }
+
+  // Success state
   return (
     <div style={{ textAlign: 'center', padding: '12px 0 28px', position: 'relative', overflow: 'hidden' }}>
       {/* Confetti rain */}
@@ -867,12 +999,6 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
       }}>
         {AVATARS[avatarIdx]}
       </div>
-
-      {authErr && (
-        <div style={{ padding: '10px 14px', background: 'rgba(230,57,70,0.1)', border: '2px solid #E63946', borderRadius: '10px', marginBottom: '16px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.82rem', color: '#E63946', maxWidth: '340px', margin: '0 auto 16px' }}>
-          ⚠️ {authErr}
-        </div>
-      )}
 
       <h2 style={{
         fontFamily: "'Fredoka One', cursive",

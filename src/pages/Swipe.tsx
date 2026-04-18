@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 const ink = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
@@ -93,6 +94,7 @@ const CARDS: CardData[] = [
 type Phase = 'intro' | 'playing' | 'results'
 
 export default function Swipe() {
+  const isMobile = useIsMobile()
   const [phase, setPhase]           = useState<Phase>('intro')
   const [idx, setIdx]               = useState(0)
   const [dragX, setDragX]           = useState(0)
@@ -484,7 +486,7 @@ export default function Swipe() {
           </div>
 
           {/* Card breakdown grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', marginBottom: '22px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)', gap: '6px', marginBottom: '22px' }}>
             {CARDS.map((c, i) => (
               <div key={c.id} style={{
                 border: `2px solid ${ink}`, borderRadius: '0.8rem',

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 const ink = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
@@ -114,6 +115,7 @@ type Phase  = 'intro' | 'playing' | 'results'
 type Choice = 'legit' | 'scam'
 
 export default function FraudSpotter() {
+  const isMobile = useIsMobile()
   const [phase,     setPhase]     = useState<Phase>('intro')
   const [offerIdx,  setOfferIdx]  = useState(0)
   const [timeLeft,  setTimeLeft]  = useState(TIMER_MAX)
@@ -505,7 +507,7 @@ export default function FraudSpotter() {
           </div>
 
           {/* Offer breakdown */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '22px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '8px', marginBottom: '22px' }}>
             {OFFERS.map((o, i) => {
               const ks2 = KIND_STYLE[o.kind]
               return (

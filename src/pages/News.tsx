@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Progress } from '@/components/ui/progress'
 import { getUser } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 const TODAY = new Date().toLocaleDateString('en-US', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -89,6 +90,7 @@ const XP_LEVELS = [
 ]
 
 export default function News() {
+  const isMobile = useIsMobile()
   const [player, setPlayer] = useState({
     name: 'You', level: 1, xp: 0, xpMax: 500, streak: 0,
     badges: [] as string[], avatar: '🎩',
@@ -184,17 +186,18 @@ export default function News() {
       </div>
 
       {/* ── Section nav ───────────────────────────────────────── */}
-      <div style={{ borderBottom: `2px solid ${ink}`, display: 'flex', justifyContent: 'center' }}>
+      <div style={{ borderBottom: `2px solid ${ink}`, display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
         {['Savings', 'Budgeting', 'Investing', 'Loans', 'Challenges'].map((s, i, arr) => (
           <button key={s} style={{
             fontFamily: "'Fredoka One', cursive",
             fontSize: '0.68rem', letterSpacing: '0.1em',
-            textTransform: 'uppercase', padding: '8px 22px',
+            textTransform: 'uppercase', padding: isMobile ? '8px 14px' : '8px 22px',
             borderRight: i < arr.length - 1 ? `1.5px solid ${ink}` : 'none',
             transition: 'background 0.1s',
             background: 'transparent',
             cursor: 'pointer',
             opacity: 0.75,
+            whiteSpace: 'nowrap',
           }}
           onMouseEnter={e => (e.currentTarget.style.background = surface)}
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -206,12 +209,13 @@ export default function News() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
 
         {/* ── Row 1: Hero + Sidebar ─────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', borderBottom: `2px solid ${ink}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', borderBottom: `2px solid ${ink}` }}>
 
           {/* Hero article */}
           <div style={{
-            padding: '24px 24px 24px 0',
-            borderRight: `2px solid ${ink}`,
+            padding: isMobile ? '16px' : '24px 24px 24px 0',
+            borderRight: isMobile ? 'none' : `2px solid ${ink}`,
+            borderBottom: isMobile ? `2px solid ${ink}` : 'none',
             cursor: 'pointer', transition: 'background 0.12s',
           }}
           onMouseEnter={e => (e.currentTarget.style.background = hover)}
@@ -361,11 +365,12 @@ export default function News() {
         </div>
 
         {/* ── Row 2: Three game mode columns ─────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: `2px solid ${ink}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', borderBottom: `2px solid ${ink}` }}>
           {GAME_MODES.map((mode, i) => (
             <div key={mode.tag} style={{
               padding: '20px',
-              borderRight: i < 2 ? `2px solid ${ink}` : 'none',
+              borderRight: !isMobile && i < 2 ? `2px solid ${ink}` : 'none',
+              borderBottom: isMobile && i < 2 ? `2px solid ${ink}` : 'none',
               cursor: 'pointer', transition: 'background 0.12s',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = hover)}

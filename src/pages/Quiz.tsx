@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 // ── Questions ─────────────────────────────────────────────────
 const QUESTIONS = [
@@ -132,6 +133,7 @@ export default function Quiz() {
   }
 
   const grade = GRADES.find(g => correct >= g.min)!
+  const isMobile = useIsMobile()
   const timerPct = (timeLeft / TIMER_MAX) * 100
   const timerColor = timeLeft <= 8 ? '#E63946' : timeLeft <= 15 ? '#FF7B25' : '#2D9A4E'
 
@@ -142,14 +144,14 @@ export default function Quiz() {
       background: 'var(--rh-surface)',
       backgroundImage: 'radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px), radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px)',
       backgroundSize: '22px 22px', backgroundPosition: '0 0, 11px 11px',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '32px 20px 60px',
+      display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center',
+      padding: isMobile ? '16px 12px 60px' : '32px 20px 60px',
     }}>
       <div style={{
         width: '100%', maxWidth: '680px',
         background: 'var(--rh-paper)',
         border: `3px solid ${ink}`,
-        borderRadius: '2.2rem 2rem 2.2rem 2.1rem',
+        borderRadius: isMobile ? '1.4rem' : '2.2rem 2rem 2.2rem 2.1rem',
         boxShadow: `8px 8px 0 ${ink}, 13px 13px 0 color-mix(in srgb, ${ink} 18%, transparent)`,
         overflow: 'hidden',
         backgroundImage: 'radial-gradient(circle, var(--rh-body-dot) 0.8px, transparent 0.8px)',
@@ -190,7 +192,7 @@ export default function Quiz() {
         Answer fast for a speed bonus. Think slow, pay the price.
       </p>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: isMobile ? '8px' : '20px', marginBottom: '32px', flexWrap: 'wrap' }}>
         {[['5', 'Questions'], ['30s', 'Per question'], ['+550', 'XP available']].map(([val, label]) => (
           <div key={label} style={{
             border: `2px solid ${ink}`, borderRadius: '1rem',
@@ -358,8 +360,8 @@ export default function Quiz() {
 
       {/* ── Answer options ─────────────────────────────────── */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr',
-        gap: '12px', padding: '0 28px 28px',
+        display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+        gap: '12px', padding: isMobile ? '0 16px 20px' : '0 28px 28px',
       }}>
         {q.options.map((opt, i) => {
           const isSelected  = selected === i

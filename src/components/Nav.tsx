@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ThemeToggle } from './ThemeToggle'
 import { OrgSwitcher } from './OrgSwitcher'
+import { useIsMobile } from '../lib/responsive'
 
 const LINKS = [
   { to: '/',            label: 'Home' },
@@ -22,6 +23,105 @@ const RIGHT_LINKS = [
 
 export function Nav() {
   const { pathname } = useLocation()
+  const isMobile = useIsMobile()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const closeMenu = () => setMenuOpen(false)
+
+  if (isMobile) {
+    return (
+      <>
+        <nav style={{
+          position: 'sticky', top: 0, zIndex: 100,
+          borderBottom: '2.5px solid var(--rh-ink)',
+          background: 'var(--rh-paper)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 16px', height: '52px',
+          backgroundImage: 'radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px)',
+          backgroundSize: '18px 18px',
+        }}>
+          <Link to="/" onClick={closeMenu} style={{
+            fontFamily: "'Fredoka One', cursive",
+            fontSize: '1rem', letterSpacing: '0.02em',
+            textDecoration: 'none', color: 'var(--rh-ink)', whiteSpace: 'nowrap',
+          }}>★ XP Gazette</Link>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ThemeToggle />
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              style={{
+                background: 'none', border: '2px solid var(--rh-ink)', borderRadius: '8px',
+                width: '36px', height: '36px', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                padding: '6px',
+              }}
+              aria-label="Toggle menu"
+            >
+              <span style={{ display: 'block', width: '18px', height: '2px', background: 'var(--rh-ink)', borderRadius: '2px', transition: 'all 0.2s', transform: menuOpen ? 'rotate(45deg) translate(5px,5px)' : '' }} />
+              <span style={{ display: 'block', width: '18px', height: '2px', background: 'var(--rh-ink)', borderRadius: '2px', transition: 'all 0.2s', opacity: menuOpen ? 0 : 1 }} />
+              <span style={{ display: 'block', width: '18px', height: '2px', background: 'var(--rh-ink)', borderRadius: '2px', transition: 'all 0.2s', transform: menuOpen ? 'rotate(-45deg) translate(5px,-5px)' : '' }} />
+            </button>
+          </div>
+        </nav>
+
+        {/* Mobile drawer */}
+        {menuOpen && (
+          <div style={{
+            position: 'fixed', top: '52px', left: 0, right: 0, bottom: 0, zIndex: 99,
+            background: 'var(--rh-paper)',
+            backgroundImage: 'radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px)',
+            backgroundSize: '18px 18px',
+            borderTop: '2px solid var(--rh-ink)',
+            overflowY: 'auto',
+            display: 'flex', flexDirection: 'column', padding: '16px',
+            gap: '4px',
+          }}>
+            <OrgSwitcher />
+            <div style={{ height: '12px' }} />
+            {LINKS.map(({ to, label }) => {
+              const active = pathname === to
+              return (
+                <Link key={to} to={to} onClick={closeMenu} style={{
+                  fontFamily: "'Fredoka One', cursive",
+                  fontSize: '1.1rem', letterSpacing: '0.05em',
+                  textDecoration: 'none',
+                  padding: '14px 20px',
+                  borderRadius: '14px',
+                  background: active ? 'var(--rh-ink)' : 'transparent',
+                  color: active ? 'var(--rh-paper)' : 'var(--rh-ink)',
+                  border: `2px solid ${active ? 'var(--rh-ink)' : 'transparent'}`,
+                  display: 'block',
+                }}>
+                  {label}
+                </Link>
+              )
+            })}
+            <div style={{ height: '8px', borderTop: '1.5px solid var(--rh-ink)', margin: '8px 0' }} />
+            {RIGHT_LINKS.map(({ to, label, accent }) => {
+              const active = pathname === to
+              return (
+                <Link key={to} to={to} onClick={closeMenu} style={{
+                  fontFamily: "'Fredoka One', cursive",
+                  fontSize: '1.1rem', letterSpacing: '0.05em',
+                  textDecoration: 'none',
+                  padding: '14px 20px',
+                  borderRadius: '14px',
+                  background: active ? 'var(--rh-ink)' : accent,
+                  color: active ? 'var(--rh-paper)' : '#1A0800',
+                  border: `2px solid var(--rh-ink)`,
+                  boxShadow: `3px 3px 0 var(--rh-ink)`,
+                  display: 'block',
+                }}>
+                  {label}
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </>
+    )
+  }
 
   return (
     <nav style={{

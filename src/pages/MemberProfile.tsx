@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { getMember, type ApiMember } from '../lib/api'
 import { BADGE_CATALOG } from '../data/members'
 import { getSession } from '../lib/session'
+import { useIsMobile } from '../lib/responsive'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -192,6 +193,7 @@ function LoadingSkeleton() {
 }
 
 export default function MemberProfile() {
+  const isMobile = useIsMobile()
   const { slug } = useParams<{ slug: string }>()
   const [apiData, setApiData] = useState<ApiMember | null>(null)
   const [loading, setLoading] = useState(true)
@@ -268,7 +270,7 @@ export default function MemberProfile() {
               }}>← Community</Link>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:'36px', alignItems:'center' }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr', gap: isMobile ? '16px' : '36px', alignItems:'center' }}>
               <div style={{ position:'relative', width:'160px', height:'160px', flexShrink:0 }}>
                 <StarburstSVG color={isLight ? 'rgba(26,8,0,0.25)' : 'rgba(254,249,238,0.3)'} />
                 <ConfettiRing color={lc} />
@@ -392,7 +394,6 @@ export default function MemberProfile() {
               {!member.isYou ? (
                 <>
                   <button style={{ fontFamily:"'Fredoka One', cursive", fontSize:'0.8rem', letterSpacing:'0.08em', textTransform:'uppercase', padding:'11px 28px', borderRadius:'9999px', border:`2.5px solid ${isLight ? '#1A0800' : '#FEF9EE'}`, background: isLight ? '#1A0800' : '#FEF9EE', color: isLight ? '#FEF9EE' : '#1A0800', boxShadow:`3px 3px 0 ${isLight ? 'rgba(26,8,0,0.3)' : 'rgba(0,0,0,0.3)'}`, cursor:'pointer' }}>⚡ Challenge</button>
-                  <button style={{ fontFamily:"'Fredoka One', cursive", fontSize:'0.8rem', letterSpacing:'0.08em', textTransform:'uppercase', padding:'11px 28px', borderRadius:'9999px', border:`2.5px solid ${isLight ? '#1A0800' : '#FEF9EE'}`, background:'rgba(26,8,0,0.15)', color: textOn, boxShadow:`3px 3px 0 ${isLight ? 'rgba(26,8,0,0.3)' : 'rgba(0,0,0,0.3)'}`, cursor:'pointer' }}>👥 Follow</button>
                 </>
               ) : (
                 <Link to="/profile" style={{ fontFamily:"'Fredoka One', cursive", fontSize:'0.8rem', letterSpacing:'0.08em', textTransform:'uppercase', padding:'11px 28px', borderRadius:'9999px', border:`2.5px solid #1A0800`, background:'#1A0800', color:'#FFCD00', boxShadow:`3px 3px 0 rgba(26,8,0,0.3)`, textDecoration:'none', display:'inline-block' }}>✏️ Edit My Profile</Link>
@@ -405,7 +406,7 @@ export default function MemberProfile() {
         <div style={{ maxWidth:'1100px', margin:'0 auto', padding:'0 24px' }}>
 
           {/* Row 1: About + XP Breakdown */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', marginBottom:'20px' }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'16px', marginBottom:'20px' }}>
 
             <div style={{ background:paper, border:`3px solid ${ink}`, borderRadius:'2rem 1.8rem 2rem 1.9rem', boxShadow:`6px 6px 0 ${ink}`, padding:'24px' }}>
               <div style={{ fontFamily:"'Fredoka One', cursive", fontSize:'0.65rem', letterSpacing:'0.16em', textTransform:'uppercase', opacity:0.45, marginBottom:'14px' }}>★ About</div>
@@ -503,7 +504,7 @@ export default function MemberProfile() {
           </div>
 
           {/* Row 2: Activity Timeline + Achievements */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'16px' }}>
 
             <div style={{ background:paper, border:`3px solid ${ink}`, borderRadius:'2rem 1.8rem 2rem 1.9rem', boxShadow:`6px 6px 0 ${ink}`, padding:'24px' }}>
               <div style={{ fontFamily:"'Fredoka One', cursive", fontSize:'0.65rem', letterSpacing:'0.16em', textTransform:'uppercase', opacity:0.45, marginBottom:'18px' }}>★ Recent Activity</div>

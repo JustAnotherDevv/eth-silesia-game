@@ -3,9 +3,9 @@
  * Applies schema migration then seeds 50 users, ~300 game results, badges, etc.
  *
  * Usage:
- *   # In server/.env set:
- *   #   SUPABASE_URL, SUPABASE_SERVICE_KEY
- *   #   DATABASE_URL  (Supabase dashboard → Settings → Database → URI connection string)
+ *   Set in server/.env:
+ *     SUPABASE_URL, SUPABASE_SERVICE_KEY
+ *     SUPABASE_ACCESS_TOKEN  ← get from supabase.com/dashboard/account/tokens
  *   npm run seed
  */
 import { createClient } from '@supabase/supabase-js'
@@ -16,76 +16,110 @@ import pg from 'pg'
 
 config({ path: resolve(process.cwd(), 'server/.env') })
 
-const SUPABASE_URL         = process.env.SUPABASE_URL!
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY!
-const DATABASE_URL         = process.env.DATABASE_URL
+const SUPABASE_URL           = process.env.SUPABASE_URL!
+const SUPABASE_SERVICE_KEY   = process.env.SUPABASE_SERVICE_KEY!
+const DATABASE_URL           = process.env.DATABASE_URL
+const SUPABASE_ACCESS_TOKEN  = process.env.SUPABASE_ACCESS_TOKEN
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error('❌  Set SUPABASE_URL and SUPABASE_SERVICE_KEY in server/.env')
   process.exit(1)
 }
 
+const PROJECT_REF = SUPABASE_URL.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? ''
+
+// ── Migration via Supabase Management API (needs SUPABASE_ACCESS_TOKEN) ──
+async function migrateViaManagementApi(token: string): Promise<void> {
+  const sqlFile = readFileSync(resolve(process.cwd(), 'supabase/migrations/001_schema.sql'), 'utf8')
+  // Split on semicolons, skip blank lines and comment-only lines
+  const stmts = sqlFile
+    .replace(/--[^\n]*/g, '')
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+
+  console.log(`   ℹ️  Applying ${stmts.length} statements via Management API...`)
+  for (const stmt of stmts) {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: stmt }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ message: res.statusText })) as { message?: string }
+      if (body.message?.match(/already exists/i)) continue
+      throw new Error(`Statement failed: ${body.message}\n   SQL: ${stmt.slice(0, 120)}`)
+    }
+  }
+  console.log('✅  Schema migration applied via Management API')
+}
+
+// ── Migration via direct postgres (pooler or direct connection) ───────────
+async function migrateViaPg(): Promise<void> {
+  if (!DATABASE_URL) throw new Error('DATABASE_URL not set')
+
+  const directMatch = DATABASE_URL.match(/postgresql:\/\/postgres:([^@]+)@db\.([^.]+)\.supabase\.co:\d+\/postgres/)
+  let connStr = DATABASE_URL
+
+  if (directMatch) {
+    const [, password, ref] = directMatch
+    const regions = ['eu-central-1','us-east-1','eu-west-2','us-west-1','ap-southeast-1','ap-northeast-1','ca-central-1','ap-south-1']
+    for (const region of regions) {
+      for (const port of [5432, 6543] as const) {
+        const url = `postgresql://postgres.${ref}:${password}@aws-0-${region}.pooler.supabase.com:${port}/postgres`
+        const c = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 3000 })
+        try { await c.connect(); await c.end(); connStr = url; break } catch { /* next */ }
+      }
+      if (connStr !== DATABASE_URL) break
+    }
+    if (connStr === DATABASE_URL) throw new Error('All pooler regions failed')
+  }
+
+  const client = new pg.Client({ connectionString: connStr, ssl: { rejectUnauthorized: false } })
+  await client.connect()
+  const sql = readFileSync(resolve(process.cwd(), 'supabase/migrations/001_schema.sql'), 'utf8')
+  await client.query(sql)
+  await client.end()
+  console.log('✅  Schema migration applied via pg')
+}
+
 function printMigrationInstructions() {
   const sqlPath = resolve(process.cwd(), 'supabase/migrations/001_schema.sql')
-  const ref = SUPABASE_URL.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? 'your-project'
   console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.error('⚡ One-time manual step — takes 30 seconds:')
-  console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-  console.error(`   1. Open:  https://supabase.com/dashboard/project/${ref}/sql/new`)
-  console.error(`   2. Paste: ${sqlPath}`)
-  console.error('   3. Click "Run"')
-  console.error('   4. Then:  npm run seed')
+  console.error('⚡ Auto-migration failed. Two options:\n')
+  console.error('  OPTION A — add token to server/.env, then re-run:')
+  console.error('    SUPABASE_ACCESS_TOKEN=sbp_xxxx  ← from supabase.com/dashboard/account/tokens\n')
+  console.error('  OPTION B — paste SQL manually (30 seconds):')
+  console.error(`    1. Open:  https://supabase.com/dashboard/project/${PROJECT_REF}/sql/new`)
+  console.error(`    2. Paste: ${sqlPath}`)
+  console.error('    3. Click "Run" → then run: npm run seed')
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
 }
 
-// Newer Supabase projects don't expose db.*.supabase.co — auto-detect pooler URL.
-async function resolveConnStr(url: string): Promise<string> {
-  const directMatch = url.match(/postgresql:\/\/postgres:([^@]+)@db\.([^.]+)\.supabase\.co:\d+\/postgres/)
-  if (!directMatch) return url
-
-  const [, password, ref] = directMatch
-  const regions = ['eu-central-1', 'us-east-1', 'eu-west-2', 'us-west-1', 'ap-southeast-1', 'ap-northeast-1', 'ca-central-1', 'ap-south-1', 'sa-east-1']
-  console.log('   ℹ️  Probing Supabase pooler regions...')
-
-  for (const region of regions) {
-    for (const port of [5432, 6543] as const) {
-      const pooler = `postgresql://postgres.${ref}:${password}@aws-0-${region}.pooler.supabase.com:${port}/postgres`
-      const c = new pg.Client({ connectionString: pooler, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 4000 })
-      try {
-        await c.connect()
-        await c.end()
-        console.log(`   ✓  Pooler found: ${region}:${port}`)
-        return pooler
-      } catch {
-        // try next
-      }
-    }
-  }
-  throw new Error('Pooler probe exhausted all regions.')
-}
-
 async function applyMigration() {
-  // Fast check: skip if tables already exist
+  // Skip if tables already exist
   const { error: checkErr } = await sb.from('orgs').select('id').limit(1)
   if (!checkErr) {
     console.log('✅  Schema already present — skipping migration')
     return
   }
 
-  // Tables absent — need DDL via direct postgres
-  if (DATABASE_URL) {
+  // Try Management API first (most reliable for new Supabase projects)
+  if (SUPABASE_ACCESS_TOKEN) {
     try {
-      const connStr = await resolveConnStr(DATABASE_URL)
-      const client = new pg.Client({ connectionString: connStr, ssl: { rejectUnauthorized: false } })
-      await client.connect()
-      const sql = readFileSync(resolve(process.cwd(), 'supabase/migrations/001_schema.sql'), 'utf8')
-      await client.query(sql)
-      await client.end()
-      console.log('✅  Schema migration applied')
+      await migrateViaManagementApi(SUPABASE_ACCESS_TOKEN)
       return
     } catch (err) {
-      console.error('⚠️   Auto-migration failed:', (err as Error).message)
+      console.error('⚠️   Management API migration failed:', (err as Error).message)
     }
+  }
+
+  // Try direct pg/pooler connection
+  try {
+    await migrateViaPg()
+    return
+  } catch (err) {
+    console.error('⚠️   pg migration failed:', (err as Error).message)
   }
 
   printMigrationInstructions()

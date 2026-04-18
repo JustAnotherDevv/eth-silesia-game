@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
@@ -11,1027 +11,798 @@ const surface = 'var(--rh-surface)'
 
 // ─── Types ────────────────────────────────────────────────────
 
-type Outcome = 'brilliant' | 'smart' | 'neutral' | 'poor' | 'disaster'
-type Phase   = 'intro' | 'briefing' | 'choosing' | 'consequence' | 'verdict'
-
-type Choice = {
-  letter:   'A' | 'B' | 'C' | 'D'
-  label:    string
-  desc:     string
-  accent:   string
-  icon:     string
-  outcome:  Outcome
-  xp:       number
-  headline: string
-  lesson:   string
-  snap:     string
-  timeline: { label: string; value: string; good: boolean }[]
+interface Stats {
+  money: number
+  mood: number    // 0-100
+  stress: number  // 0-100
+  flags: Record<string, boolean | number>
 }
 
-type Scenario = {
-  id:       number
-  category: string
-  title:    string
-  story:    string
-  choices:  [Choice, Choice, Choice, Choice]
+interface Choice {
+  emoji: string
+  label: string
+  detail: string
+  next: string
+  risk?: 'safe' | 'bold' | 'risky' | 'smart'
+  effect?: Partial<Omit<Stats, 'flags'>> & { flags?: Record<string, boolean | number> }
+  condition?: (s: Stats) => boolean
 }
 
-// ─── Scenario data ────────────────────────────────────────────
+interface Scene {
+  id: string
+  chapter: number
+  emoji: string
+  title: string
+  text: string | ((s: Stats) => string)
+  choices?: Choice[]
+  autoNext?: string
+  onEnter?: (s: Stats) => Partial<Omit<Stats, 'flags'>> & { flags?: Record<string, boolean | number> }
+  isEnding?: boolean
+  endingLabel?: string
+  endingColor?: string
+  xp?: number
+}
 
-const SCENARIOS: Scenario[] = [
-  {
-    id: 1,
-    category: 'WINDFALL',
-    title: 'The Inheritance',
-    story: `Your great-aunt Władysława — known for legendary frugality — has left you 15,000 PLN. Your car loan sits at 8,000 PLN with a 12% annual interest rate, and a friend is evangelising index ETFs averaging 7–10% annual returns.\n\nYou have 30 days to decide.`,
-    choices: [
-      {
-        letter: 'A', label: 'Invest Everything',
-        desc: 'Put all 15,000 PLN into a diversified index ETF immediately.',
-        accent: '#1565C0', icon: '📈', outcome: 'smart', xp: 180,
-        headline: 'INVESTOR PLAYS THE LONG GAME — MARKET REWARDS PATIENCE',
-        lesson: 'Investing in index ETFs is smart — but only after eliminating high-interest debt. Paying 12% APR while earning 7–10% is a net loss every year.',
-        snap: 'Your investment grows steadily. But that 12% car loan quietly drains ~960 PLN in interest annually — money your ETF could have recouped instantly.',
-        timeline: [
-          { label: 'Month 6', value: '15,525 PLN',  good: true  },
-          { label: 'Year 1',  value: '16,200 PLN',  good: true  },
-          { label: 'Year 5',  value: '21,400 PLN',  good: true  },
-        ],
+interface Story {
+  id: string
+  emoji: string
+  title: string
+  subtitle: string
+  color: string
+  duration: string
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
+  startScene: string
+  startStats: Stats
+  chapters: string[]
+  scenes: Record<string, Scene>
+}
+
+// ─── Story 1: The First Real Job ──────────────────────────────
+
+const STORY_JOB: Story = {
+  id: 'first_job',
+  emoji: '💼',
+  title: 'The First Real Job',
+  subtitle: 'You landed your dream job. Now what?',
+  color: '#2D9A4E',
+  duration: '~8 min',
+  difficulty: 'Beginner',
+  startScene: 'arrival',
+  startStats: { money: 800, mood: 80, stress: 20, flags: {} },
+  chapters: ['First Week', 'First Paycheck', 'The Offer', 'Year One'],
+  scenes: {
+    arrival: {
+      id: 'arrival', chapter: 1, emoji: '🎉',
+      title: 'You got the job!',
+      text: 'Warsaw, Monday morning. You just showed up at your first day at TechFlow — a 60-person startup paying you €2,800/month net. The office smells like coffee and ambition. Your bank account has €800 left from student savings.\n\nHR hands you an onboarding form. Under "transport allowance", you notice you can expense up to €200/month for commuting. But you\'d need to actually track every receipt.',
+      choices: [
+        { emoji: '📱', label: 'Set up an expense tracker', detail: 'Methodical from day one. Claim every euro.', next: 'apartment', risk: 'smart', effect: { flags: { tracks_expenses: true } } },
+        { emoji: '🤷', label: 'Too much hassle, skip it', detail: 'You\'ll just ballpark it later.', next: 'apartment', risk: 'safe', effect: { mood: 5 } },
+      ],
+    },
+    apartment: {
+      id: 'apartment', chapter: 1, emoji: '🏠',
+      title: 'The Housing Dilemma',
+      text: 'You\'ve been crashing with a friend but need your own place. Two options just came up:\n\n🏚 Mokotów studio — €650/month. Small, 45-min commute each way. Your evenings would evaporate.\n\n🏙 Śródmieście flat with a roommate — €950/month. 10-min walk to the office. Split bills, shared kitchen, shared sanity.',
+      choices: [
+        { emoji: '🏚', label: 'Cheap studio, save the difference', detail: '€300 cheaper but 75 hours/month commuting', next: 'paycheck_1', risk: 'safe', effect: { money: -650, stress: 15, flags: { cheap_apartment: true } } },
+        { emoji: '🏙', label: 'City flat with roommate', detail: 'More expensive but reclaim your evenings', next: 'paycheck_1', risk: 'bold', effect: { money: -950, mood: 10, stress: -10, flags: { has_roommate: true } } },
+      ],
+    },
+    paycheck_1: {
+      id: 'paycheck_1', chapter: 2, emoji: '💰',
+      title: 'First Paycheck: €2,800',
+      text: (s) => `The 25th. €2,800 hits your account. After rent (${s.flags.cheap_apartment ? '€650' : '€950'}) and groceries (~€350), you have about €${s.flags.cheap_apartment ? '1,800' : '1,500'} to do something with.\n\nYour colleague Marta brags she's been auto-investing 20% of her salary since month one. Your friend group is planning a weekend in Kraków for €400. And that €${s.flags.cheap_apartment ? '1,800' : '1,500'} is just... sitting there.`,
+      choices: [
+        { emoji: '✈️', label: 'Kraków weekend — you earned it', detail: 'Spend €400, keep the rest in savings', next: 'friend_loan', risk: 'bold', effect: { money: -400, mood: 20, stress: -15, flags: { went_krakow: true } } },
+        { emoji: '📈', label: 'Invest 20%, rest to savings', detail: 'Put €560 in an ETF, €1,000 to savings', next: 'friend_loan', risk: 'smart', effect: { money: 200, mood: 5, flags: { investing: true } } },
+        { emoji: '🏦', label: 'Save everything, live like a student', detail: 'Max savings, zero lifestyle inflation', next: 'friend_loan', risk: 'safe', effect: { money: 1500, stress: 10, mood: -10, flags: { full_saver: true } } },
+      ],
+    },
+    friend_loan: {
+      id: 'friend_loan', chapter: 2, emoji: '😬',
+      title: 'The Text Message',
+      text: 'Three months in. You\'re finally feeling financially stable. Then your best friend Piotr texts:\n\n"Hey… I know this is awkward but I got fired last month and I\'m about to miss rent. Can you lend me €500? I\'ll pay you back by the 15th, I promise."\n\nPiotr has been your friend since high school. He also borrowed €200 from you two years ago that you never fully got back.',
+      choices: [
+        { emoji: '💸', label: 'Send the €500', detail: 'Friendship first. It\'s just money.', next: 'work_review', risk: 'bold', effect: { money: -500, mood: 10, stress: 10, flags: { lent_piotr: true } } },
+        { emoji: '🤝', label: 'Offer €200, not €500', detail: 'Help but protect yourself', next: 'work_review', risk: 'smart', effect: { money: -200, stress: 5, flags: { partial_help: true } } },
+        { emoji: '❌', label: 'Say no, you can\'t afford it', detail: 'Protect your finances. It might cost the friendship.', next: 'work_review', risk: 'safe', effect: { mood: -15, stress: -5, flags: { refused_piotr: true } } },
+      ],
+    },
+    work_review: {
+      id: 'work_review', chapter: 3, emoji: '⭐',
+      title: 'Six-Month Review',
+      text: 'Your manager calls you in for a mid-year review. "You\'ve been fantastic," he says. "We want to keep you." He slides a paper across the table.\n\nOption A: €400/month raise — immediate, guaranteed.\nOption B: Stock options worth 0.1% of the company — vesting over 4 years. If TechFlow gets acquired (which management says is "likely"), this could be worth €50,000+. Or nothing.\n\n"You don\'t have to decide now," he says. "But by Friday."',
+      choices: [
+        { emoji: '💵', label: 'Take the €400 raise', detail: '€4,800/year guaranteed, starting now', next: 'side_hustle', risk: 'safe', effect: { money: 400, mood: 10, stress: -5, flags: { took_raise: true } } },
+        { emoji: '📊', label: 'Take the stock options', detail: 'High risk, potentially huge upside in 4 years', next: 'side_hustle', risk: 'risky', effect: { mood: 5, stress: 15, flags: { took_options: true } } },
+        { emoji: '🤝', label: 'Negotiate: half raise + half options', detail: '€200 raise AND reduced options', next: 'side_hustle', risk: 'smart', effect: { money: 200, mood: 15, flags: { negotiated: true } } },
+      ],
+    },
+    side_hustle: {
+      id: 'side_hustle', chapter: 3, emoji: '💡',
+      title: 'The Side Hustle Temptation',
+      text: (s) => `Month eight. ${s.flags.took_raise ? 'The raise has been nice' : s.flags.negotiated ? 'The combined deal feels right' : 'The stock options feel like a gamble'}. A colleague mentions she makes €600/month doing freelance UX audits on weekends — 6-8 hours of work.\n\n"You could do it too," she says. "Just don't tell HR."\n\nYour employment contract has a vague clause about "competing activities". You're not sure if this counts.`,
+      choices: [
+        { emoji: '🚀', label: 'Start freelancing, don\'t mention it', detail: '€600/month extra but some legal grey area', next: 'year_end', risk: 'risky', effect: { money: 600, stress: 20, flags: { freelancing: true } } },
+        { emoji: '📝', label: 'Ask HR to clarify the contract first', detail: 'Slower but clean', next: 'year_end', risk: 'smart', effect: { stress: -5, flags: { asked_hr: true } } },
+        { emoji: '🙅', label: 'Skip it — your main job is enough', detail: 'Keep work-life balance', next: 'year_end', risk: 'safe', effect: { mood: 10, stress: -10 } },
+      ],
+    },
+    year_end: {
+      id: 'year_end', chapter: 4, emoji: '🎆',
+      title: 'Year One: The Reckoning',
+      text: (s) => {
+        const totalMoney = s.money
+        const investedStr = s.flags.investing ? ' Your ETF is up 11% — a small but real gain.' : ''
+        const freelanceStr = s.flags.freelancing ? ' HR found out about the freelancing and gave you a verbal warning, but let it go.' : ''
+        const piotrStr = s.flags.lent_piotr ? ' Piotr paid back €300 of the €500. You\'ve stopped expecting the rest.' : s.flags.refused_piotr ? ' Piotr barely talks to you now.' : ''
+        return `One full year at TechFlow. You have €${totalMoney.toLocaleString()} in savings.${investedStr}${freelanceStr}${piotrStr}\n\nYour manager pulls you aside: "We\'re growing. We want to offer you a senior role — €3,600/month. But it means managing a team of three." More money, more responsibility. Or you could stay where you are, comfortable and coasting.`
       },
-      {
-        letter: 'B', label: 'Kill the Debt. Then Invest.',
-        desc: 'Pay off the 8,000 PLN loan first. Invest the remaining 7,000 PLN.',
-        accent: '#2D9A4E', icon: '🎯', outcome: 'brilliant', xp: 320,
-        headline: 'FINANCIAL GENIUS: LOCAL INVESTOR ELIMINATES 12% DEBT BEFORE INVESTING',
-        lesson: 'A guaranteed 12% return (by eliminating debt) beats a probable 7–10% return. Zero debt + growing investment = the mathematically dominant move.',
-        snap: 'You lock in a guaranteed 12% "return" by erasing the loan, then compound the rest. No anchor, only tailwind.',
-        timeline: [
-          { label: 'Month 1', value: '0 PLN debt ✓',  good: true },
-          { label: 'Year 1',  value: '7,490 PLN',      good: true },
-          { label: 'Year 5',  value: '10,100 PLN',     good: true },
-        ],
-      },
-      {
-        letter: 'C', label: 'Treat Yourself',
-        desc: 'New laptop, a trip to Italy, and park 5,000 PLN in a savings account.',
-        accent: '#E63946', icon: '✈️', outcome: 'poor', xp: 40,
-        headline: 'LIFESTYLE INFLATION STRIKES AGAIN: LOCAL INHERITOR SPENDS WINDFALL',
-        lesson: '"Lifestyle creep" is the silent wealth killer. One-time windfalls spent on depreciating assets leave no lasting financial advantage.',
-        snap: 'The laptop loses 40% value in year one. The trip is a memory. The 5,000 at 1.5% barely outpaces inflation — while the car loan drains on.',
-        timeline: [
-          { label: 'Month 1', value: '5,075 PLN',  good: false },
-          { label: 'Year 1',  value: '4,850 PLN',  good: false },
-          { label: 'Year 5',  value: '3,900 PLN',  good: false },
-        ],
-      },
-      {
-        letter: 'D', label: 'Play It Ultra-Safe',
-        desc: 'Deposit all 15,000 PLN in a savings account at 1.5% APR.',
-        accent: '#FF7B25', icon: '🏦', outcome: 'neutral', xp: 90,
-        headline: 'CAUTIOUS INVESTOR PRESERVES CAPITAL, QUIETLY LOSES TO INFLATION',
-        lesson: 'A savings account at 1.5% with 5% inflation means you\'re losing purchasing power every year. Capital "preservation" isn\'t wealth building.',
-        snap: 'Safe? Yes. But with inflation at 5%, your 15,000 PLN buys less each year. Meanwhile, the car loan interest compounds silently against you.',
-        timeline: [
-          { label: 'Month 6', value: '15,112 PLN', good: false },
-          { label: 'Year 1',  value: '15,225 PLN', good: false },
-          { label: 'Year 5',  value: '16,150 PLN', good: false },
-        ],
-      },
-    ] as [Choice, Choice, Choice, Choice],
+      choices: [
+        { emoji: '👑', label: 'Take the senior role', detail: 'Step up. More money, more pressure.', next: 'ending_ambitious', risk: 'bold' },
+        { emoji: '😌', label: 'Stay in your current role', detail: 'You\'re happy where you are.', next: (s: Stats) => s.flags.investing ? 'ending_balanced' : 'ending_comfortable' } as unknown as Choice,
+      ],
+    },
+    ending_ambitious: {
+      id: 'ending_ambitious', chapter: 4, emoji: '🏆', isEnding: true,
+      endingLabel: 'The Ambitious Path', endingColor: '#FFCD00', xp: 350,
+      title: 'One Year Later: Fast Mover',
+      text: 'You took the senior role and never looked back. Managing three people is hard — you made mistakes early — but you grew into it fast. Your salary jumped to €3,600, and with disciplined saving you\'ve built a real cushion.\n\nYear one: done. You\'re 25, earning well above average, with savings, maybe some investments, and a career trajectory most people your age would kill for.\n\n📊 Key lesson: Early career is the cheapest time to take risks. Comfort now often means stagnation later.',
+      choices: [],
+    },
+    ending_balanced: {
+      id: 'ending_balanced', chapter: 4, emoji: '⚖️', isEnding: true,
+      endingLabel: 'The Balanced Path', endingColor: '#2D9A4E', xp: 300,
+      title: 'One Year Later: Steady & Growing',
+      text: 'You kept your current role but you\'ve been quietly building wealth in the background. Your ETF returns are modest but compounding. You didn\'t max your earning potential this year, but you built good habits that will carry you for decades.\n\n"Boring" financial discipline in your 20s is worth more than flashy moves in your 30s.\n\n📊 Key lesson: Consistent, automatic investing from your first paycheck is the single highest-leverage financial habit you can form.',
+      choices: [],
+    },
+    ending_comfortable: {
+      id: 'ending_comfortable', chapter: 4, emoji: '😌', isEnding: true,
+      endingLabel: 'The Comfortable Path', endingColor: '#1565C0', xp: 200,
+      title: 'One Year Later: Safe but Stagnant',
+      text: 'Year one done. You\'re comfortable — nothing bad happened, and you learned a lot. But your savings are thinner than they could be, and you left some opportunities on the table.\n\nThe good news: you still have decades ahead of you. The bad news: the habits you form now tend to stick.\n\n📊 Key lesson: Your 20s are the highest-leverage years for financial habits. Starting a year late isn\'t catastrophic, but it has a real cost in compounding returns.',
+      choices: [],
+    },
   },
-  {
-    id: 2,
-    category: 'TEMPTATION',
-    title: 'The Crypto Oracle',
-    story: `Your colleague Marek — who just bought a Tesla — approaches you with an "exclusive opportunity". His friend's crypto fund guarantees 20% monthly returns. Minimum: 5,000 PLN. You have 20,000 PLN in savings.\n\n"I've already made 40% in two months," Marek whispers. "Spots are closing fast."`,
-    choices: [
-      {
-        letter: 'A', label: 'Go All In',
-        desc: 'Invest all 20,000 PLN — 20% monthly is life-changing.',
-        accent: '#E63946', icon: '💸', outcome: 'disaster', xp: 0,
-        headline: 'TRAGEDY: INVESTOR LOSES ENTIRE SAVINGS TO PONZI SCHEME',
-        lesson: '"Guaranteed returns" don\'t exist in legitimate finance. No verified fund has ever sustainably returned 20% monthly. This is a textbook Ponzi.',
-        snap: 'The "fund" pays out for 2 months using new investor money. Month 3: Marek stops answering. Website goes offline. 20,000 PLN: gone.',
-        timeline: [
-          { label: 'Month 2', value: '24,000 (paper)',   good: false },
-          { label: 'Month 3', value: '0 PLN',             good: false },
-          { label: 'Year 1',  value: '-20,000 PLN lost',  good: false },
-        ],
+}
+
+// ─── Story 2: The Windfall ────────────────────────────────────
+
+const STORY_WINDFALL: Story = {
+  id: 'windfall',
+  emoji: '💎',
+  title: 'Sudden Windfall',
+  subtitle: '€20,000 just landed in your account. Don\'t blow it.',
+  color: '#FF7B25',
+  duration: '~10 min',
+  difficulty: 'Intermediate',
+  startScene: 'inheritance',
+  startStats: { money: 20000, mood: 70, stress: 30, flags: {} },
+  chapters: ['The News', 'The Pressure', 'The Decision', 'The Outcome'],
+  scenes: {
+    inheritance: {
+      id: 'inheritance', chapter: 1, emoji: '📨',
+      title: 'The Letter',
+      text: 'A solicitor\'s letter. Your great-aunt Zofia — who you met exactly twice — has died. Unexpectedly, she left you €20,000.\n\nIt\'s the most money you\'ve ever had. Your current savings: €1,200. Your monthly salary: €2,200.\n\nYou stare at the bank notification for a full minute.\n\nFirst instinct?',
+      choices: [
+        { emoji: '🤫', label: 'Tell nobody. Keep it quiet.', detail: 'Information about money is dangerous.', next: 'financial_advisor', risk: 'smart', effect: { flags: { kept_secret: true } } },
+        { emoji: '📣', label: 'Tell your close friends and family', detail: 'You trust them. And it\'s exciting news!', next: 'family_pressure', risk: 'bold', effect: { mood: 15, flags: { told_family: true } } },
+      ],
+    },
+    family_pressure: {
+      id: 'family_pressure', chapter: 2, emoji: '👨‍👩‍👧',
+      title: 'The Asks Begin',
+      text: 'Within 48 hours, the requests start.\n\nYour cousin needs €3,000 to fix his car. Your parents hint that the roof needs replacing (€8,000). Your brother has a "business opportunity" that needs €5,000 seed money.\n\nCollectively they\'re asking for €16,000 of your €20,000. Everyone frames it as an investment in family.',
+      choices: [
+        { emoji: '💸', label: 'Give generously — family first', detail: 'Distribute €10,000 among the requests', next: 'financial_advisor', risk: 'risky', effect: { money: -10000, mood: -10, stress: 25, flags: { gave_family: true } } },
+        { emoji: '🛡️', label: 'Give a fixed amount and hold firm', detail: 'Offer €2,000 total, split however they like', next: 'financial_advisor', risk: 'smart', effect: { money: -2000, stress: 20, flags: { firm_with_family: true } } },
+        { emoji: '❌', label: 'Sorry — I\'m investing all of it', detail: 'Hard boundary. Some relationships may suffer.', next: 'financial_advisor', risk: 'safe', effect: { mood: -20, stress: 10, flags: { refused_family: true } } },
+      ],
+    },
+    financial_advisor: {
+      id: 'financial_advisor', chapter: 2, emoji: '🤵',
+      title: 'The "Free" Consultation',
+      text: (s) => `You have €${s.money.toLocaleString()} remaining. A financial advisor at your bank calls to offer a free consultation. "These things are our specialty," he says warmly.\n\nHe recommends a managed investment fund with a 1.8% annual fee. "Our experts do all the work," he explains. He also mentions a structured product with a "guaranteed" 6% return — though the fine print reveals the guarantee has conditions.\n\nYou've read enough to know: 1.8% fees destroy long-term returns. But you don't know what to do instead.`,
+      choices: [
+        { emoji: '✍️', label: 'Sign up for the managed fund', detail: 'Easy. Expensive. Probably underperforms.', next: 'property_dream', risk: 'risky', effect: { stress: -10, flags: { managed_fund: true } } },
+        { emoji: '📚', label: 'Do your own research first', detail: 'Spend two weeks learning before deciding', next: 'research_results', risk: 'smart', effect: { stress: 10, flags: { did_research: true } } },
+        { emoji: '🏃', label: 'Walk out — trust nobody', detail: 'Pure paranoia, but not wrong in this case', next: 'property_dream', risk: 'bold', effect: { flags: { distrusts_advisor: true } } },
+      ],
+    },
+    research_results: {
+      id: 'research_results', chapter: 2, emoji: '🔍',
+      title: 'What You Learned',
+      text: 'Two weeks of nights reading. Here\'s what you found:\n\n• Index funds (e.g. Vanguard MSCI World) average ~7-10% annual returns over 20+ years\n• 1.8% management fees cut your final pot by 30-40% over 30 years\n• Keeping €5,000 in a high-yield savings account (4.5%) makes sense as an emergency fund\n• Tax-advantaged accounts (IKE/IKZE in Poland) let you defer capital gains tax\n\nYou feel genuinely smarter. And slightly angry that nobody taught you this at school.',
+      autoNext: 'property_dream',
+      onEnter: () => ({ mood: 15, stress: -5, flags: { financially_literate: true } }),
+    },
+    property_dream: {
+      id: 'property_dream', chapter: 3, emoji: '🏡',
+      title: 'The Property Temptation',
+      text: (s) => `You have €${s.money.toLocaleString()}. A friend mentions that property in a smaller Polish city is affordable — you could use this as a down payment on a studio apartment and rent it out for €500/month.\n\nThe numbers: apartment costs €90,000. You'd need €18,000 down + €3,000 closing costs. Monthly mortgage: €420. Rental income: €500. Theoretical profit: €80/month — before repairs, vacancies, taxes.\n\n${s.flags.financially_literate ? 'Your research tells you: rental yield here is ~6.7%, which is decent but illiquid. You can\'t easily sell if things go wrong.' : 'It sounds like free money. But you haven\'t fully run the numbers.'}`,
+      choices: [
+        { emoji: '🏠', label: 'Go for it — buy the property', detail: 'Commit to landlord life', next: 'crypto_tempt', risk: 'bold', effect: { money: -21000, stress: 20, flags: { bought_property: true } }, condition: (s) => s.money >= 21000 },
+        { emoji: '📈', label: 'Invest in index funds instead', detail: 'Liquid, diversified, lower effort', next: 'crypto_tempt', risk: 'smart', effect: { mood: 5, flags: { index_investing: true } } },
+        { emoji: '🏦', label: 'Split: emergency fund + ETF + wait', detail: '€5K savings, €15K ETF, keep options open', next: 'crypto_tempt', risk: 'smart', effect: { flags: { diversified: true } } },
+      ],
+    },
+    crypto_tempt: {
+      id: 'crypto_tempt', chapter: 3, emoji: '₿',
+      title: 'The Signal',
+      text: (s) => `Your phone lights up. A friend in a Discord group: "Bro. This new DeFi protocol is returning 340% APY. Fully audited. I already put in €3k. You NEED to get in before it moons."\n\nYou have €${s.money.toLocaleString()} at stake. ${s.flags.financially_literate || s.flags.did_research ? 'Everything you\'ve learned screams red flag. 340% APY is mathematically unsustainable.' : 'It sounds insane. But the friend-of-a-friend who got in early did make money...'}`,
+      choices: [
+        { emoji: '₿', label: 'YOLO in €2,000', detail: 'High risk. Probably a Ponzi. But maybe not?', next: 'two_years_later', risk: 'risky', effect: { money: -2000, stress: 25, flags: { yolo_crypto: true } } },
+        { emoji: '🛑', label: 'Absolutely not', detail: 'Classic rug-pull setup. Hard no.', next: 'two_years_later', risk: 'smart', effect: { mood: 10, flags: { avoided_crypto_scam: true } } },
+        { emoji: '🤏', label: 'Invest €200 — money I can lose', detail: 'Speculative allocation, capped at 1%', next: 'two_years_later', risk: 'bold', effect: { money: -200, stress: 5, flags: { small_crypto: true } } },
+      ],
+    },
+    two_years_later: {
+      id: 'two_years_later', chapter: 4, emoji: '⏩',
+      title: 'Two Years Later',
+      text: (s) => {
+        const crypto_note = s.flags.yolo_crypto ? '💥 The DeFi protocol rug-pulled three months after you entered. You lost the €2,000.' : s.flags.small_crypto ? '📉 The DeFi thing collapsed. You lost €200 — a lesson worth the price.' : '✅ Smart move avoiding that DeFi thing — it was a Ponzi that collapsed.'
+        const invest_note = s.flags.index_investing || s.flags.diversified ? '📈 Your index funds are up 18% over two years — €2,700+ in gains.' : s.flags.managed_fund ? '📊 Your managed fund is up 9% but fees ate €800 of your gains.' : s.flags.bought_property ? '🏠 Your rental property has had two months of vacancy and a €600 boiler repair. Net income: €320 total.' : '💤 Your money sat in a savings account earning 2%. You\'ve lost ground to inflation.'
+        const family_note = s.flags.gave_family ? '\n\n👨‍👩‍👧 Your cousin never repaid the car money. Your brother\'s "business" failed after six months.' : ''
+        return `${crypto_note}\n\n${invest_note}${family_note}\n\nYou sit down and calculate your actual net worth.`
       },
-      {
-        letter: 'B', label: 'Test With a Small Bet',
-        desc: 'Try just 2,000 PLN first — if it works, go bigger.',
-        accent: '#FF7B25', icon: '🎰', outcome: 'poor', xp: 60,
-        headline: '"JUST TESTING" BURNS LOCAL INVESTOR — PONZI COLLAPSES ON SCHEDULE',
-        lesson: 'A Ponzi scheme doesn\'t become safe with a smaller bet. Any money in a fraud is money lost — but you avoided complete catastrophe.',
-        snap: 'Your 400 PLN "return" in month 1 was designed to build confidence. The scheme collapses in month 3. You lose 2,000 — but saved 18,000 by hesitating.',
-        timeline: [
-          { label: 'Month 1', value: '2,400 (fake)',  good: false },
-          { label: 'Month 3', value: '0 PLN',          good: false },
-          { label: 'Year 1',  value: '-2,000 PLN lost', good: false },
-        ],
-      },
-      {
-        letter: 'C', label: 'Walk Away',
-        desc: 'Politely decline. Something about this doesn\'t add up.',
-        accent: '#1565C0', icon: '🛡️', outcome: 'smart', xp: 200,
-        headline: 'SMART INVESTOR DODGES PONZI: "MY GUT SAID NO"',
-        lesson: 'Red flags you spotted: guaranteed returns, artificial urgency, exclusivity claims, single-source social proof. All classic Ponzi hallmarks.',
-        snap: 'You walk away. Three months later the scheme collapses. Marek loses 50,000 PLN. Your 20,000 sits safe — and keeps quietly compounding.',
-        timeline: [
-          { label: 'Month 1', value: '20,000 ✓',        good: true },
-          { label: 'Month 3', value: 'Scheme collapses', good: true },
-          { label: 'Year 1',  value: '21,400 PLN',       good: true },
-        ],
-      },
-      {
-        letter: 'D', label: 'Decline + Report It',
-        desc: 'Turn it down AND report the scheme to UOKiK.',
-        accent: '#2D9A4E', icon: '⚖️', outcome: 'brilliant', xp: 350,
-        headline: 'FINANCIAL HERO: LOCAL INVESTOR EXPOSES PONZI, SAVES 23 VICTIMS',
-        lesson: 'Reporting financial fraud to Poland\'s UOKiK stops others from losing everything. Civic duty pays — in this case, 350 XP and a clear conscience.',
-        snap: 'Your report triggers an investigation. The scheme shuts before fully collapsing. 23 other investors are protected. You\'re cited in the arrest report.',
-        timeline: [
-          { label: 'Month 1', value: '20,000 ✓',       good: true },
-          { label: 'Month 2', value: 'Scheme shut down', good: true },
-          { label: 'Year 1',  value: '21,400 + hero 🦸', good: true },
-        ],
-      },
-    ] as [Choice, Choice, Choice, Choice],
+      choices: [
+        { emoji: '📊', label: 'See my final results', detail: '', next: (s: Stats) => {
+          if ((s.flags.index_investing || s.flags.diversified) && !s.flags.gave_family && !s.flags.yolo_crypto) return 'ending_wise'
+          if (s.flags.bought_property) return 'ending_landlord'
+          if (s.flags.gave_family && s.flags.yolo_crypto) return 'ending_lessons'
+          return 'ending_decent'
+        } } as unknown as Choice,
+      ],
+    },
+    ending_wise: {
+      id: 'ending_wise', chapter: 4, emoji: '🧠', isEnding: true,
+      endingLabel: 'The Wise Investor', endingColor: '#FFCD00', xp: 400,
+      title: 'The Textbook Outcome',
+      text: 'You dodged the family pressure, skipped the predatory advisor, did your research, invested in boring index funds, and avoided the obvious scam.\n\nTwo years later your €20,000 has grown to ~€24,000 — and unlike most windfalls, it\'s still intact and growing.\n\n📊 Key lesson: The winning move with a windfall is almost always: emergency fund → pay high-interest debt → boring diversified index funds. Repeat. The exciting options almost never win.',
+      choices: [],
+    },
+    ending_landlord: {
+      id: 'ending_landlord', chapter: 4, emoji: '🔑', isEnding: true,
+      endingLabel: 'The Reluctant Landlord', endingColor: '#1565C0', xp: 280,
+      title: 'Property Is Complicated',
+      text: 'You\'re a landlord now. It\'s not passive income — it\'s a part-time job. Repairs, tenant turnover, tax filing. Your actual yield after costs is closer to 3% than the 6% you planned for.\n\nNot a disaster. Not the slam dunk it looked like either.\n\n📊 Key lesson: Real estate has genuine advantages but "passive income" is a myth — it\'s illiquid capital doing part-time work that you have to manage.',
+      choices: [],
+    },
+    ending_decent: {
+      id: 'ending_decent', chapter: 4, emoji: '📈', isEnding: true,
+      endingLabel: 'Decent Outcome', endingColor: '#2D9A4E', xp: 240,
+      title: 'Could\'ve Been Worse',
+      text: 'You made some suboptimal moves — overpaid in fees, maybe lost some to a bad bet — but you didn\'t blow the whole thing. The money is still mostly there, still working.\n\nMost people who receive a windfall spend it within 2 years. You didn\'t. That alone puts you in the minority.\n\n📊 Key lesson: Preserving a windfall is harder than it sounds. The pressure to spend, give, and "invest" in bad ideas is enormous. You survived it.',
+      choices: [],
+    },
+    ending_lessons: {
+      id: 'ending_lessons', chapter: 4, emoji: '📖', isEnding: true,
+      endingLabel: 'Expensive Education', endingColor: '#E63946', xp: 180,
+      title: 'You Paid for the Lesson',
+      text: 'Between family giving, the crypto loss, and bank fees, about €14,000 of your €20,000 has gone. €6,000 remains in savings.\n\nThat\'s still more than most people your age have saved. But the windfall that could have been a launchpad became a speed bump.\n\n📊 Key lesson: Windfalls are psychologically brutal. They attract everyone who wants your money. The single best move is to park it untouched for 30 days before making any decision — and tell nobody.',
+      choices: [],
+    },
   },
-]
-
-// ─── Oracle character SVG ─────────────────────────────────────
-// IMAGE GENERATION PROMPT:
-// "1930s rubber hose cartoon villain/oracle character, mysterious financier
-//  wearing a tall top hat with gold band and red feather, monocle over one
-//  eye, knowing sinister smirk with one eyebrow raised, white gloves, dark
-//  suit with cape, pointing finger at viewer, rubbery bendable limbs,
-//  Fleischer Studios style, thick black outlines, cream skin tone,
-//  transparent background, flat 2D, no gradients"
-
-function OracleSVG() {
-  return (
-    <svg viewBox="0 0 160 230" width="160" height="230" xmlns="http://www.w3.org/2000/svg">
-      <g>
-        {/* Cape */}
-        <path d="M42 100 Q12 145 24 200 L80 188 L136 200 Q148 145 118 100"
-          fill="#1A0800" stroke="#1A0800" strokeWidth="1.5"/>
-        {/* Body/suit */}
-        <ellipse cx="80" cy="138" rx="34" ry="46" fill="#2A1208" stroke="#1A0800" strokeWidth="3"/>
-        {/* Lapels / pocket square */}
-        <path d="M46 112 Q62 126 80 120 Q98 126 114 112" fill="#FFCD00" stroke="#1A0800" strokeWidth="2"/>
-        <rect x="74" y="108" width="12" height="10" rx="2" fill="#FFCD00" stroke="#1A0800" strokeWidth="1.5"/>
-        {/* Head */}
-        <circle cx="80" cy="72" r="32" fill="#FEF3C7" stroke="#1A0800" strokeWidth="3.5"/>
-        {/* Left eye — normal */}
-        <circle cx="67" cy="67" r="9" fill="white" stroke="#1A0800" strokeWidth="2.5"/>
-        <circle cx="69" cy="66" r="5.5" fill="#1A0800"/>
-        <circle cx="71" cy="64" r="2" fill="white"/>
-        {/* Right eye — monocle */}
-        <circle cx="93" cy="67" r="9" fill="white" stroke="#1A0800" strokeWidth="2.5"/>
-        <circle cx="95" cy="66" r="5.5" fill="#1A0800"/>
-        <circle cx="97" cy="64" r="2" fill="white"/>
-        {/* Monocle ring */}
-        <circle cx="93" cy="67" r="12" fill="none" stroke="#FFCD00" strokeWidth="2.5"/>
-        <line x1="93" y1="55" x2="91" y2="43" stroke="#FFCD00" strokeWidth="2" strokeLinecap="round"/>
-        <circle cx="91" cy="42" r="3" fill="#FFCD00" stroke="#1A0800" strokeWidth="1.5"/>
-        {/* Raised left eyebrow */}
-        <path d="M58 58 Q66 52 75 57" fill="none" stroke="#1A0800" strokeWidth="2.5" strokeLinecap="round"/>
-        {/* Flat right eyebrow */}
-        <path d="M84 56 Q92 49 103 55" fill="none" stroke="#1A0800" strokeWidth="2.5" strokeLinecap="round"/>
-        {/* Knowing smirk */}
-        <path d="M66 83 Q76 94 90 86" fill="none" stroke="#1A0800" strokeWidth="3" strokeLinecap="round"/>
-        <path d="M90 86 Q93 85 93 83" fill="none" stroke="#1A0800" strokeWidth="2" strokeLinecap="round"/>
-        {/* Top hat */}
-        <rect x="50" y="22" width="60" height="38" rx="5" fill="#1A0800"/>
-        <rect x="40" y="58" width="80" height="9" rx="5" fill="#1A0800"/>
-        {/* Hat band */}
-        <rect x="50" y="50" width="60" height="9" fill="#FFCD00"/>
-        {/* Feather */}
-        <path d="M110 22 Q126 4 132 16 Q122 9 112 20" fill="#E63946" stroke="#1A0800" strokeWidth="1.5"/>
-        {/* Left arm — pointing at viewer */}
-        <path d="M46 115 Q18 100 20 84" fill="none" stroke="#2A1208" strokeWidth="14" strokeLinecap="round"/>
-        <path d="M46 115 Q18 100 20 84" fill="none" stroke="#1A0800" strokeWidth="3" strokeLinecap="round"/>
-        <circle cx="20" cy="82" r="11" fill="white" stroke="#1A0800" strokeWidth="2.5"/>
-        {/* Pointing finger */}
-        <path d="M8 74 L20 82" stroke="white" strokeWidth="5" strokeLinecap="round"/>
-        <path d="M8 74 L20 82" stroke="#1A0800" strokeWidth="1.5" strokeLinecap="round"/>
-        {/* Right arm — holding cane */}
-        <path d="M114 115 Q142 100 140 84" fill="none" stroke="#2A1208" strokeWidth="14" strokeLinecap="round"/>
-        <path d="M114 115 Q142 100 140 84" fill="none" stroke="#1A0800" strokeWidth="3" strokeLinecap="round"/>
-        <circle cx="140" cy="82" r="11" fill="white" stroke="#1A0800" strokeWidth="2.5"/>
-        {/* Cane */}
-        <line x1="150" y1="82" x2="156" y2="190" stroke="#7A4E2D" strokeWidth="5" strokeLinecap="round"/>
-        <line x1="150" y1="82" x2="156" y2="190" stroke="#1A0800" strokeWidth="2" strokeLinecap="round"/>
-        <path d="M148 82 Q145 72 150 82" fill="#7A4E2D" stroke="#1A0800" strokeWidth="1.5" strokeLinecap="round"/>
-        <ellipse cx="157" cy="192" rx="8" ry="4" fill="#7A4E2D" stroke="#1A0800" strokeWidth="2"/>
-        {/* Legs */}
-        <path d="M58 178 Q50 200 42 218" fill="none" stroke="#1A0800" strokeWidth="14" strokeLinecap="round"/>
-        <ellipse cx="40" cy="220" rx="12" ry="6" fill="#1A0800"/>
-        <path d="M102 178 Q110 200 118 218" fill="none" stroke="#1A0800" strokeWidth="14" strokeLinecap="round"/>
-        <ellipse cx="120" cy="220" rx="12" ry="6" fill="#1A0800"/>
-        {/* Body outline over arms */}
-        <ellipse cx="80" cy="138" rx="34" ry="46" fill="none" stroke="#1A0800" strokeWidth="3"/>
-        {/* Float animation */}
-        <animateTransform attributeName="transform" type="translate"
-          values="0,0;0,-9;0,0" dur="3.2s" repeatCount="indefinite"
-          calcMode="spline" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"/>
-      </g>
-    </svg>
-  )
 }
 
-// ─── Outcome consequence SVGs ─────────────────────────────────
+// ─── Story 3: The Side Hustle ─────────────────────────────────
 
-function BrilliantSVG({ xp }: { xp: number }) {
-  return (
-    <svg viewBox="0 0 260 220" width="260" height="220" xmlns="http://www.w3.org/2000/svg">
-      {/* Orbiting stars */}
-      {[0, 1].map(i => (
-        <g key={i} style={{ transformOrigin: '130px 100px', animation: `${i === 0 ? 'orbit-star' : 'orbit-star-2'} 3s linear infinite` }}>
-          <text x="130" y="100" textAnchor="middle" fontSize="20" fill="#FFCD00" stroke="#1A0800" strokeWidth="1">★</text>
-        </g>
-      ))}
-      {/* Trophy cup — bounces in */}
-      <g style={{ transformOrigin: '130px 130px', animation: 'scale-up-bounce 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.1s both' }}>
-        <path d="M95 170 Q68 140 74 104 Q84 80 130 78 Q176 80 186 104 Q192 140 165 170Z"
-          fill="#FFCD00" stroke="#1A0800" strokeWidth="3.5"/>
-        <path d="M74 110 Q54 98 60 122 Q64 140 74 135" fill="none" stroke="#1A0800" strokeWidth="3.5" strokeLinecap="round"/>
-        <path d="M186 110 Q206 98 200 122 Q196 140 186 135" fill="none" stroke="#1A0800" strokeWidth="3.5" strokeLinecap="round"/>
-        <rect x="116" y="170" width="28" height="14" rx="4" fill="#FFCD00" stroke="#1A0800" strokeWidth="3"/>
-        <rect x="102" y="184" width="56" height="14" rx="5" fill="#E8A870" stroke="#1A0800" strokeWidth="3"/>
-        <text x="130" y="142" textAnchor="middle" fontSize="36" fill="#1A0800">★</text>
-        <text x="130" y="142" textAnchor="middle" fontSize="36" fill="#FFCD00" dx="-1.5" dy="-1.5" opacity="0.5">★</text>
-      </g>
-      {/* XP label */}
-      <g style={{ animation: 'xp-count-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.9s both' }}>
-        <rect x="80" y="4" width="100" height="32" rx="16" fill="#2D9A4E" stroke="#1A0800" strokeWidth="2.5"/>
-        <text x="130" y="25" textAnchor="middle" fontFamily="'Fredoka One',cursive" fontSize="15" fill="white">+{xp} XP ⭐</text>
-      </g>
-      {/* Sparkle bursts */}
-      {[{x:28,y:60},{x:230,y:55},{x:20,y:155},{x:240,y:150}].map((s,i) => (
-        <text key={i} x={s.x} y={s.y} textAnchor="middle" fontSize="22" fill="#FFCD00" stroke="#1A0800" strokeWidth="0.8">
-          ✦
-          <animate attributeName="opacity" values="0;1;0" dur={`${1.2+i*0.25}s`} begin={`${i*0.18}s`} repeatCount="indefinite"/>
-        </text>
-      ))}
-    </svg>
-  )
+const STORY_HUSTLE: Story = {
+  id: 'side_hustle',
+  emoji: '🚀',
+  title: 'Side Hustle or Bust',
+  subtitle: 'You have €3,000, a laptop, and an idea.',
+  color: '#7B2D8B',
+  duration: '~12 min',
+  difficulty: 'Advanced',
+  startScene: 'the_idea',
+  startStats: { money: 3000, mood: 85, stress: 25, flags: {} },
+  chapters: ['The Idea', 'Launch', 'Traction', 'Scale or Bail'],
+  scenes: {
+    the_idea: {
+      id: 'the_idea', chapter: 1, emoji: '💡',
+      title: 'The Idea',
+      text: 'You\'ve been working a €2,400/month job for two years. Stable. Boring. You have €3,000 saved and an itch you can\'t scratch.\n\nThree ideas have been rattling around your head:\n\n📸 Freelance content — Social media management for local businesses. Low cost to start. Competitive market.\n\n🛍️ Dropshipping — Resell products online without holding inventory. Margins are thin; competition brutal.\n\n🎓 Online course — Teach something you know. Takes time to build. Huge margins if it works.',
+      choices: [
+        { emoji: '📸', label: 'Content creation agency', detail: 'B2B service, recurring revenue, relationship-driven', next: 'quit_or_stay', risk: 'smart', effect: { flags: { venture: 'content' } } },
+        { emoji: '🛍️', label: 'Dropshipping store', detail: 'Product-first, ad-spend heavy, fast to launch', next: 'quit_or_stay', risk: 'risky', effect: { flags: { venture: 'dropship' } } },
+        { emoji: '🎓', label: 'Online course or coaching', detail: 'Knowledge-based, high margin, slow to build audience', next: 'quit_or_stay', risk: 'bold', effect: { flags: { venture: 'course' } } },
+      ],
+    },
+    quit_or_stay: {
+      id: 'quit_or_stay', chapter: 1, emoji: '🤔',
+      title: 'The Big Question',
+      text: (s) => `Before you spend a zloty, you need to decide: do you do this on the side while keeping your job, or do you go all-in?\n\nYour job: €2,400/month, 8 hours a day, 40 hours a week.\nYour savings runway if you quit: ${Math.round(s.money / 1500)} months (estimating €1,500/month living costs).\n\nYour friend who went full-time says: "Having no fallback makes you work harder." Your accountant uncle says: "Keep income until revenue replaces it — ego kills startups."`,
+      choices: [
+        { emoji: '💼', label: 'Keep the job, hustle on weekends', detail: 'Safe. Slower. Sustainable longer.', next: 'first_spend', risk: 'safe', effect: { stress: 15, flags: { kept_job: true } } },
+        { emoji: '🔥', label: 'Quit and commit fully', detail: 'You have 2 months of runway. Make it count.', next: 'first_spend', risk: 'risky', effect: { money: -2400, mood: 20, stress: 30, flags: { quit_job: true } } },
+        { emoji: '💬', label: 'Negotiate part-time at your job first', detail: '20 hours/week at 60% pay while you test it', next: 'first_spend', risk: 'smart', effect: { money: -960, stress: 10, flags: { part_time: true } } },
+      ],
+    },
+    first_spend: {
+      id: 'first_spend', chapter: 2, emoji: '💸',
+      title: 'The First Investment',
+      text: (s) => `You have €${s.money.toLocaleString()} left. Time to spend some to make some.\n\n${s.flags.venture === 'content' ? 'Content agency path: You need a decent website and maybe some initial outreach tools. A done-for-you agency website costs €800. A template + your own time costs €50.' : s.flags.venture === 'dropship' ? 'Dropshipping path: You\'ll need a Shopify store (€30/month) plus ad spend. Most experts say you need €1,000+ to test ads properly.' : 'Course path: Recording equipment (€400), course platform (€50/month), and you need an audience to sell to first.'}`,
+      choices: [
+        { emoji: '💰', label: 'Spend big — proper setup from day one', detail: 'Invest €1,000-1,500 upfront', next: 'first_customer', risk: 'bold', effect: { money: -1200, stress: 10, flags: { big_spend: true } } },
+        { emoji: '🪄', label: 'Bootstrap — minimum viable setup', detail: 'Spend only €100-200, figure out the rest later', next: 'first_customer', risk: 'smart', effect: { money: -150, stress: 5, flags: { bootstrapped: true } } },
+      ],
+    },
+    first_customer: {
+      id: 'first_customer', chapter: 2, emoji: '🙋',
+      title: 'The First Yes',
+      text: (s) => {
+        const weeks = s.flags.quit_job ? 'Four weeks in' : 'Eight weeks in'
+        const venture_txt = s.flags.venture === 'content' ? 'A local restaurant owner messages you on Instagram: "I saw your profile, I need help with my social media. What do you charge?"' : s.flags.venture === 'dropship' ? 'Your first sale comes in — €47 for a bamboo kitchen organizer. You net €12 after product cost and Shopify fees. It took €380 in ad spend to get here.' : 'You\'ve been posting content about your expertise for weeks. One person DMs: "Do you do 1-on-1 coaching? I\'d pay for a session."'
+        return `${weeks}. ${venture_txt}\n\nThis is it — first real signal. How do you respond?`
+      },
+      choices: [
+        { emoji: '💵', label: 'Price high — €500/month or nothing', detail: 'Risk losing them but set a premium position', next: 'growing_pains', risk: 'bold', effect: { mood: 10, flags: { priced_high: true } } },
+        { emoji: '🤝', label: 'Offer a discounted trial for a testimonial', detail: '€150 for 2 weeks in exchange for a review', next: 'growing_pains', risk: 'smart', effect: { money: 150, mood: 15, flags: { got_testimonial: true } } },
+        { emoji: '🆓', label: 'Do it free to build your portfolio', detail: 'No money now, but proof you can do it', next: 'growing_pains', risk: 'risky', effect: { mood: 5, stress: 15, flags: { went_free: true } } },
+      ],
+    },
+    growing_pains: {
+      id: 'growing_pains', chapter: 3, emoji: '😤',
+      title: 'Month Three: The Wall',
+      text: (s) => {
+        const income = s.flags.priced_high ? 'You landed two clients at €500/month each. €1,000 MRR. It\'s working — but slowly.' : s.flags.got_testimonial ? 'Three paying clients at various rates. Revenue: €600/month. Your testimonial is bringing in referrals.' : 'Still figuring it out. Revenue this month: €180.'
+        const job_txt = s.flags.quit_job ? `\n\nWith no job, you\'re burning through savings. You have €${s.money.toLocaleString()} left. At current burn rate: ${Math.round(s.money / 1200)} months of runway.` : s.flags.part_time ? '\n\nYour part-time salary is covering your bills, which takes the pressure off slightly.' : '\n\nYour day job is covering bills. This is purely upside.'
+        return `Month three. ${income}${job_txt}\n\nYou get an offer: a startup wants you to join them full-time. €3,200/month. Better than your old job. Your side hustle is early but showing signs of life.`
+      },
+      choices: [
+        { emoji: '🤝', label: 'Take the job — side hustle is too slow', detail: 'Secure income, abandon the experiment', next: 'tax_surprise', risk: 'safe', effect: { money: 3200, mood: -10, stress: -20, flags: { took_new_job: true } } },
+        { emoji: '🔥', label: 'Refuse — go harder on the hustle', detail: 'Double down. You\'re not done yet.', next: 'tax_surprise', risk: 'risky', effect: { stress: 20, mood: 15, flags: { doubled_down: true } } },
+        { emoji: '⏸️', label: 'Ask for 3 months to decide', detail: 'Buy time. If revenue hits €2K/month by then, stay.', next: 'tax_surprise', risk: 'smart', effect: { flags: { delayed_decision: true } } },
+      ],
+    },
+    tax_surprise: {
+      id: 'tax_surprise', chapter: 3, emoji: '😱',
+      title: 'The Tax Bill Nobody Warned You About',
+      text: (s) => {
+        const earned = s.flags.priced_high ? '€6,000' : s.flags.got_testimonial ? '€3,600' : '€1,800'
+        return `Your accountant emails you. Turns out you\'ve been earning money without registering a business or setting aside VAT. You\'ve made ~${earned} in revenue this year.\n\nPolish tax rules: you need to file as self-employed (jednoosobowa działalność gospodarcza), pay social contributions (~€350/month), and potentially back-pay VAT if over the threshold.\n\nYou had no idea. Almost nobody tells you this when you "just start freelancing".`
+      },
+      choices: [
+        { emoji: '📋', label: 'Hire an accountant, get it sorted properly', detail: '€150/month but total peace of mind', next: 'six_months', risk: 'smart', effect: { money: -1200, stress: -20, flags: { has_accountant: true } } },
+        { emoji: '🙈', label: 'Stay under the radar, hope for the best', detail: 'Risky. Tax authorities catch up eventually.', next: 'six_months', risk: 'risky', effect: { stress: 20, flags: { tax_risk: true } } },
+        { emoji: '📚', label: 'Learn it yourself and file manually', detail: 'Time-consuming but free', next: 'six_months', risk: 'bold', effect: { stress: 15, mood: -10, flags: { diy_tax: true } } },
+      ],
+    },
+    six_months: {
+      id: 'six_months', chapter: 4, emoji: '📊',
+      title: 'Six Months In: The Numbers',
+      text: (s) => {
+        const revenue_txt = s.flags.doubled_down && s.flags.priced_high ? 'Your hustle is now generating €2,400/month. Real money.' : s.flags.took_new_job ? 'You took the new job. The side hustle ticked along part-time at €600/month.' : s.flags.got_testimonial ? 'Revenue has grown to €1,500/month through referrals.' : 'Revenue is at €800/month — enough to prove it works, not yet enough to live on.'
+        const tax_txt = s.flags.tax_risk ? '\n\n⚠️ Tax authority sent a questionnaire. You\'re nervous.' : s.flags.has_accountant ? '\n\n✅ Taxes are handled. You actually know your real profit margins now.' : ''
+        return `${revenue_txt}${tax_txt}\n\nSix months after launch, you face a final decision about where to take this.`
+      },
+      choices: [
+        { emoji: '📈', label: 'Scale hard — hire a subcontractor', detail: 'Take on more clients, pay someone to help deliver', next: (s: Stats) => s.flags.doubled_down || s.flags.got_testimonial ? 'ending_founder' : 'ending_grind' } as unknown as Choice,
+        { emoji: '😌', label: 'Keep it as a comfortable side income', detail: '€800-1,500/month part-time, no stress', next: 'ending_lifestyle', risk: 'safe' },
+        { emoji: '🤝', label: 'Sell the client list and move on', detail: 'Cash out. Take the learnings.', next: 'ending_exit', risk: 'bold', effect: { money: 3000 } },
+      ],
+    },
+    ending_founder: {
+      id: 'ending_founder', chapter: 4, emoji: '🏆', isEnding: true,
+      endingLabel: 'The Founder', endingColor: '#FFCD00', xp: 450,
+      title: 'You Built Something Real',
+      text: 'You hired a subcontractor, systematized your service delivery, and grew from 2 clients to 8. Monthly revenue: €5,200. Your own take-home after costs: €2,800 — matching your old salary, but now you set the hours.\n\nThis doesn\'t happen to most people who try this. You combined a real skill, smart pricing, patience through the hard months, and the discipline to handle taxes properly.\n\n📊 Key lesson: Side hustles succeed through boring execution, not magic ideas. Distribution (getting clients) is 80% of the work. The best time to raise prices is when you\'re fully booked.',
+      choices: [],
+    },
+    ending_lifestyle: {
+      id: 'ending_lifestyle', chapter: 4, emoji: '☕', isEnding: true,
+      endingLabel: 'Lifestyle Business', endingColor: '#2D9A4E', xp: 320,
+      title: 'The Profitable Hobby',
+      text: 'You didn\'t change your life, but you added €1,000+/month to it. That\'s €12,000/year invested automatically, or your holidays paid for, or a safety net that means you\'ll never have to panic about a surprise bill.\n\nMost "side hustles" fail in month two. Yours is still running. That alone puts you ahead.\n\n📊 Key lesson: A sustainable small business that funds your savings is genuinely better than a failed high-growth attempt. Not every venture needs to be a startup.',
+      choices: [],
+    },
+    ending_grind: {
+      id: 'ending_grind', chapter: 4, emoji: '😤', isEnding: true,
+      endingLabel: 'The Hard Way', endingColor: '#1565C0', xp: 260,
+      title: 'You\'re Still Standing',
+      text: 'It was harder than you expected. Revenue grew slowly, taxes blindsided you, and there were weeks you questioned everything. But you didn\'t quit. You have a working business — small, not glamorous, but real.\n\nMost people who say "I should start something" never try. You tried AND survived the hard part.\n\n📊 Key lesson: The unsexy truth about entrepreneurship is that 90% of it is staying consistent through months where it feels pointless. The 10% who keep going become the "overnight successes".',
+      choices: [],
+    },
+    ending_exit: {
+      id: 'ending_exit', chapter: 4, emoji: '💰', isEnding: true,
+      endingLabel: 'Smart Exit', endingColor: '#FF7B25', xp: 290,
+      title: 'Know When to Fold',
+      text: 'You sold your client list for €3,000 and walked away with the skills, the experience, and the cash. Sometimes the right move is a clean exit rather than grinding through a business that isn\'t your calling.\n\nYou\'re €3,000 richer, infinitely more employable, and you actually know what you\'re doing now.\n\n📊 Key lesson: Not every business needs to be a lifelong commitment. Validating an idea, learning the market, and selling the asset is a legitimate and often underrated outcome.',
+      choices: [],
+    },
+  },
 }
 
-function SmartSVG({ xp }: { xp: number }) {
-  return (
-    <svg viewBox="0 0 240 200" width="240" height="200" xmlns="http://www.w3.org/2000/svg">
-      {/* Shield */}
-      <g style={{ transformOrigin: '120px 110px', animation: 'scale-up-bounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.1s both' }}>
-        <path d="M120 42 L170 62 L170 115 Q170 155 120 175 Q70 155 70 115 L70 62 Z"
-          fill="#1565C0" stroke="#1A0800" strokeWidth="3.5"/>
-        <path d="M120 52 L160 68 L160 114 Q160 147 120 165 Q80 147 80 114 L80 68 Z"
-          fill="#3B82F6" stroke="#1A0800" strokeWidth="2" opacity="0.5"/>
-        {/* Checkmark */}
-        <path d="M97 112 L113 128 L148 90" fill="none" stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M97 112 L113 128 L148 90" fill="none" stroke="#1A0800" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4"/>
-      </g>
-      {/* Coin stack */}
-      {[0,1,2,3].map(i => (
-        <g key={i} style={{ animation: `slam 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.3 + i*0.12}s both` }}>
-          <ellipse cx="196" cy={172 - i*11} rx="20" ry="8" fill="#FFCD00" stroke="#1A0800" strokeWidth="2"/>
-          <rect x="176" cy={165 - i*11} width="40" height="10" fill="#FFCD00" stroke="#1A0800" strokeWidth="0"/>
-          <ellipse cx="196" cy={164 - i*11} rx="20" ry="8" fill="#FFE066" stroke="#1A0800" strokeWidth="2"/>
-        </g>
-      ))}
-      {/* XP */}
-      <g style={{ animation: 'xp-count-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.9s both' }}>
-        <rect x="70" y="4" width="100" height="32" rx="16" fill="#1565C0" stroke="#1A0800" strokeWidth="2.5"/>
-        <text x="120" y="25" textAnchor="middle" fontFamily="'Fredoka One',cursive" fontSize="15" fill="white">+{xp} XP ⭐</text>
-      </g>
-    </svg>
-  )
-}
+const STORIES: Story[] = [STORY_JOB, STORY_WINDFALL, STORY_HUSTLE]
 
-function NeutralSVG({ xp }: { xp: number }) {
-  return (
-    <svg viewBox="0 0 240 200" width="240" height="200" xmlns="http://www.w3.org/2000/svg">
-      {/* Balance beam */}
-      <rect x="115" y="60" width="10" height="100" fill="#7A4E2D" stroke="#1A0800" strokeWidth="2.5" rx="2"/>
-      <ellipse cx="120" cy="162" rx="30" ry="8" fill="#7A4E2D" stroke="#1A0800" strokeWidth="2.5"/>
-      {/* Beam */}
-      <g style={{ transformOrigin: '120px 75px', animation: 'wobble 3s ease-in-out infinite' }}>
-        <rect x="50" y="70" width="140" height="10" rx="5" fill="#E8D5A3" stroke="#1A0800" strokeWidth="2.5"/>
-        {/* Left pan */}
-        <line x1="65" y1="80" x2="55" y2="110" stroke="#1A0800" strokeWidth="2" strokeLinecap="round"/>
-        <line x1="65" y1="80" x2="75" y2="110" stroke="#1A0800" strokeWidth="2" strokeLinecap="round"/>
-        <path d="M48 110 Q61 120 78 110" fill="#FFCD00" stroke="#1A0800" strokeWidth="2.5"/>
-        {/* Left coin */}
-        <circle cx="63" cy="105" r="9" fill="#FFCD00" stroke="#1A0800" strokeWidth="2"/>
-        <text x="63" y="109" textAnchor="middle" fontSize="9" fill="#1A0800" fontFamily="'Fredoka One',cursive">$</text>
-        {/* Right pan */}
-        <line x1="175" y1="80" x2="165" y2="110" stroke="#1A0800" strokeWidth="2" strokeLinecap="round"/>
-        <line x1="175" y1="80" x2="185" y2="110" stroke="#1A0800" strokeWidth="2" strokeLinecap="round"/>
-        <path d="M158 110 Q171 120 188 110" fill="#FF7B25" stroke="#1A0800" strokeWidth="2.5"/>
-        {/* Right savings jar */}
-        <rect x="162" y="95" width="22" height="18" rx="3" fill="#FF7B25" stroke="#1A0800" strokeWidth="2"/>
-        <text x="173" y="108" textAnchor="middle" fontSize="9" fill="#1A0800" fontFamily="'Fredoka One',cursive">$</text>
-      </g>
-      {/* XP */}
-      <g style={{ animation: 'xp-count-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.6s both' }}>
-        <rect x="70" y="4" width="100" height="32" rx="16" fill="#FF7B25" stroke="#1A0800" strokeWidth="2.5"/>
-        <text x="120" y="25" textAnchor="middle" fontFamily="'Fredoka One',cursive" fontSize="15" fill="#1A0800">+{xp} XP</text>
-      </g>
-    </svg>
-  )
-}
+// ─── Inline stat delta badge ──────────────────────────────────
 
-function PoorSVG({ xp }: { xp: number }) {
-  return (
-    <svg viewBox="0 0 240 200" width="240" height="200" xmlns="http://www.w3.org/2000/svg">
-      {/* Wallet */}
-      <g style={{ transformOrigin: '120px 110px', animation: 'scale-up-bounce 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-        <rect x="60" y="90" width="120" height="80" rx="12" fill="#7A4E2D" stroke="#1A0800" strokeWidth="3"/>
-        <rect x="60" y="90" width="120" height="35" rx="12" fill="#5C3820" stroke="#1A0800" strokeWidth="3"/>
-        <circle cx="130" cy="110" r="14" fill="#E8D5A3" stroke="#1A0800" strokeWidth="2.5"/>
-        <text x="130" y="116" textAnchor="middle" fontSize="14" fill="#1A0800">∅</text>
-        {/* Hinge */}
-        <rect x="60" y="124" width="120" height="4" fill="#1A0800" opacity="0.3"/>
-      </g>
-      {/* Moths flying out */}
-      {[
-        { style: { animation: 'moth-fly-1 1.4s 0.3s ease-out both' }, x: 108, y: 95 },
-        { style: { animation: 'moth-fly-2 1.6s 0.5s ease-out both' }, x: 140, y: 92 },
-        { style: { animation: 'moth-fly-3 1.5s 0.4s ease-out both' }, x: 124, y: 88 },
-      ].map((m, i) => (
-        <text key={i} x={m.x} y={m.y} fontSize="18" style={m.style}>🦋</text>
-      ))}
-      {/* XP (low) */}
-      <g style={{ animation: 'xp-count-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.8s both' }}>
-        <rect x="70" y="4" width="100" height="32" rx="16" fill="#E63946" stroke="#1A0800" strokeWidth="2.5"/>
-        <text x="120" y="25" textAnchor="middle" fontFamily="'Fredoka One',cursive" fontSize="15" fill="white">+{xp} XP only...</text>
-      </g>
-      {/* Sad face */}
-      <text x="120" y="180" textAnchor="middle" fontSize="28" style={{ animation: 'slam 0.4s cubic-bezier(0.34,1.56,0.64,1) 1.2s both' }}>😔</text>
-    </svg>
-  )
-}
-
-function DisasterSVG() {
-  return (
-    <svg viewBox="0 0 260 210" width="260" height="210" xmlns="http://www.w3.org/2000/svg">
-      {/* Explosion burst */}
-      <g style={{ transformOrigin: '130px 110px', animation: 'scale-up-bounce 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-        <path d="M130 60 L145 90 L178 78 L158 104 L190 118 L158 126 L168 158 L138 142 L130 172 L122 142 L92 158 L102 126 L70 118 L102 104 L82 78 L115 90 Z"
-          fill="#E63946" stroke="#1A0800" strokeWidth="3"/>
-        <text x="130" y="125" textAnchor="middle" fontSize="40">💀</text>
-      </g>
-      {/* Coins flying away */}
-      {[
-        { style: { animation: 'coin-fly-1 1.1s 0.2s ease-out both' }, x: 122, y: 110 },
-        { style: { animation: 'coin-fly-2 1.3s 0.3s ease-out both' }, x: 138, y: 108 },
-        { style: { animation: 'coin-fly-3 1.2s 0.15s ease-out both' }, x: 130, y: 105 },
-        { style: { animation: 'coin-fly-4 1.4s 0.35s ease-out both' }, x: 118, y: 115 },
-      ].map((c, i) => (
-        <text key={i} x={c.x} y={c.y} fontSize="20" style={c.style}>🪙</text>
-      ))}
-      {/* 0 XP badge */}
-      <g style={{ animation: 'xp-count-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.7s both' }}>
-        <rect x="80" y="4" width="100" height="32" rx="16" fill="#1A0800" stroke="#E63946" strokeWidth="2.5"/>
-        <text x="130" y="25" textAnchor="middle" fontFamily="'Fredoka One',cursive" fontSize="15" fill="#E63946">+0 XP 💀</text>
-      </g>
-      {/* Screen shake */}
-      <style>{`@keyframes ds-shake { 0%,100%{transform:translate(0,0)} 20%{transform:translate(-6px,-2px)} 40%{transform:translate(6px,2px)} 60%{transform:translate(-4px,-1px)} 80%{transform:translate(4px,1px)} }`}</style>
-    </svg>
-  )
-}
-
-function OutcomeSVG({ outcome, xp }: { outcome: Outcome; xp: number }) {
-  if (outcome === 'brilliant') return <BrilliantSVG xp={xp} />
-  if (outcome === 'smart')     return <SmartSVG xp={xp} />
-  if (outcome === 'neutral')   return <NeutralSVG xp={xp} />
-  if (outcome === 'poor')      return <PoorSVG xp={xp} />
-  return <DisasterSVG />
-}
-
-// ─── Coin shower (brilliant only) ────────────────────────────
-
-function CoinShower() {
-  const coins = Array.from({ length: 22 }, (_) => ({
-    left: 4 + Math.random() * 92,
-    delay: Math.random() * 2.4,
-    size: 18 + Math.random() * 18,
-    dur: 1.6 + Math.random() * 1.8,
-    emoji: ['🪙','⭐','✨'][Math.floor(Math.random() * 3)],
-  }))
-  return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 200 }}>
-      {coins.map((c, i) => (
-        <div key={i} style={{
-          position: 'absolute', left: `${c.left}%`, top: '-40px',
-          fontSize: `${c.size}px`,
-          animation: `coin-fall ${c.dur}s ${c.delay}s ease-in both`,
-        }}>{c.emoji}</div>
-      ))}
-    </div>
-  )
-}
-
-// ─── 3-D tilt choice card ─────────────────────────────────────
-
-function ChoiceCard({
-  choice, onSelect, chosen, anyChosen,
-}: {
-  choice: Choice
-  onSelect: (c: Choice) => void
-  chosen: boolean
-  anyChosen: boolean
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  function onMove(e: React.MouseEvent) {
-    if (!ref.current || anyChosen) return
-    const r = ref.current.getBoundingClientRect()
-    const x = (e.clientX - r.left)  / r.width  - 0.5
-    const y = (e.clientY - r.top)   / r.height - 0.5
-    ref.current.style.transition = 'none'
-    ref.current.style.transform  =
-      `perspective(700px) rotateX(${-y * 16}deg) rotateY(${x * 16}deg) translateZ(14px) scale(1.02)`
-    ref.current.style.boxShadow  =
-      `${7 + x * 6}px ${7 + y * 6}px 0 ${ink}, 0 0 0 2px ${choice.accent}`
-  }
-
-  function onLeave() {
-    if (!ref.current) return
-    ref.current.style.transition = 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.35s ease'
-    ref.current.style.transform  = ''
-    ref.current.style.boxShadow  = `5px 5px 0 ${ink}`
-  }
-
-  const opacity = anyChosen ? (chosen ? 1 : 0.25) : 1
-  const anim    = anyChosen && !chosen ? 'choice-exit 0.4s cubic-bezier(0.55,0,1,0.45) both' : undefined
-  const scale   = chosen && anyChosen ? 'scale(1.04)' : undefined
-
-  return (
-    <div
-      ref={ref}
-      onClick={() => !anyChosen && onSelect(choice)}
-      onMouseMove={onMove}
-      onMouseLeave={onLeave}
-      style={{
-        background: paper, border: `3px solid ${ink}`,
-        borderRadius: '1.8rem 1.6rem 1.9rem 1.7rem',
-        boxShadow: `5px 5px 0 ${ink}`,
-        overflow: 'hidden', cursor: anyChosen ? 'default' : 'pointer',
-        opacity, animation: anim,
-        transform: scale,
-        transition: anyChosen ? 'opacity 0.3s, transform 0.35s cubic-bezier(0.34,1.56,0.64,1)' : 'box-shadow 0.3s',
-        willChange: 'transform',
-      }}
-    >
-      {/* Colored header stripe */}
-      <div style={{
-        background: choice.accent, borderBottom: `3px solid ${ink}`,
-        padding: '10px 18px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <span style={{
-          fontFamily: "'Fredoka One', cursive", fontSize: '1rem',
-          letterSpacing: '0.08em', color: '#1A0800',
-        }}>Choice {choice.letter}</span>
-        <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', opacity: 0.6, color: '#1A0800' }}>
-          {anyChosen ? (chosen ? `+${choice.xp} XP` : '—') : '? XP'}
-        </span>
-      </div>
-
-      {/* Icon */}
-      <div style={{
-        textAlign: 'center', fontSize: '3.8rem', padding: '20px 16px 8px',
-        lineHeight: 1,
-        filter: chosen && anyChosen ? 'drop-shadow(0 0 8px rgba(255,205,0,0.6))' : 'none',
-        transition: 'filter 0.3s',
-      }}>{choice.icon}</div>
-
-      {/* Label */}
-      <div style={{ padding: '0 18px 10px' }}>
-        <h3 style={{
-          fontFamily: "'Fredoka One', cursive", fontSize: '1.05rem',
-          lineHeight: 1.2, marginBottom: '8px',
-        }}>{choice.label}</h3>
-        <p style={{
-          fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500,
-          fontSize: '0.78rem', lineHeight: 1.55, opacity: 0.7,
-        }}>{choice.desc}</p>
-      </div>
-
-      {/* Bottom accent line */}
-      <div style={{ height: '5px', background: choice.accent, borderTop: `2px solid ${ink}` }}/>
-    </div>
-  )
-}
-
-// ─── Outcome config ───────────────────────────────────────────
-
-const OUTCOME_CONFIG: Record<Outcome, { label: string; accent: string; bg: string; stamp: string }> = {
-  brilliant: { label: 'BRILLIANT MOVE', accent: '#2D9A4E', bg: '#2D9A4E',  stamp: '★ GENIUS ★' },
-  smart:     { label: 'SMART CHOICE',   accent: '#1565C0', bg: '#1565C0',  stamp: '✓ WISE' },
-  neutral:   { label: 'SAFE PLAY',      accent: '#FF7B25', bg: '#FF7B25',  stamp: '~ OK' },
-  poor:      { label: 'COSTLY MISTAKE', accent: '#E63946', bg: '#E63946',  stamp: '✗ RISKY' },
-  disaster:  { label: '💀 DISASTER',    accent: '#1A0800', bg: '#E63946',  stamp: '!! RUN !!' },
-}
-
-// ─── Main component ───────────────────────────────────────────
-
-export default function Decision() {
-  const isMobile = useIsMobile()
-  useEffect(() => { preload() }, [])
-  const [phase,        setPhase]        = useState<Phase>('intro')
-  const [scenarioIdx,  setScenarioIdx]  = useState(0)
-  const [chosenChoice, setChosenChoice] = useState<Choice | null>(null)
-  const [showConsequence, setShowConsequence] = useState(false)
-
-  const scenario = SCENARIOS[scenarioIdx]
-
-  function handleChoose(choice: Choice) {
-    play('click')
-    setChosenChoice(choice)
-    setTimeout(() => setPhase('consequence'), 600)
-  }
-
-  function handleNextScenario() {
-    const next = (scenarioIdx + 1) % SCENARIOS.length
-    setScenarioIdx(next)
-    setChosenChoice(null)
-    setShowConsequence(false)
-    setPhase('briefing')
-  }
-
-  // ── Submit to API on verdict ────────────────────────────────
+function DeltaBadge({ delta, color }: { delta: number; color: string }) {
+  const [opacity, setOpacity] = useState(1)
   useEffect(() => {
-    if (phase !== 'verdict' || !chosenChoice) return
-    play(chosenChoice.outcome === 'brilliant' ? 'complete' : chosenChoice.outcome === 'risky' ? 'wrong' : 'complete')
-    const session = getSession()
-    if (!session) return
-    submitGame({ userId: session.id, gameType: 'decision', xpEarned: chosenChoice.xp, score: 1, total: 1, metadata: { outcome: chosenChoice.outcome, scenario: scenario.id } }).catch(() => {})
-  }, [phase])
+    const t1 = setTimeout(() => setOpacity(0), 1000)
+    return () => clearTimeout(t1)
+  }, [])
+  if (delta === 0) return null
+  return (
+    <span style={{
+      fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem',
+      color, opacity, transition: 'opacity 0.6s ease',
+      pointerEvents: 'none', whiteSpace: 'nowrap',
+    }}>
+      {delta > 0 ? `+${delta}` : delta}
+    </span>
+  )
+}
 
-  // Consequence auto-advance
-  useEffect(() => {
-    if (phase !== 'consequence') return
-    setShowConsequence(false)
-    const t1 = setTimeout(() => setShowConsequence(true), 100)
-    const t2 = setTimeout(() => setPhase('verdict'), 3800)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [phase])
+// ─── Persistent stats panel ───────────────────────────────────
 
-  const pageWrap = (children: React.ReactNode, dark = false) => (
+interface StatsPanelProps {
+  stats: Stats
+  deltas: { money: number; mood: number; stress: number; n: number }
+  story: Story
+  chapter: string
+}
+
+function StatsPanel({ stats, deltas, story, chapter }: StatsPanelProps) {
+  const moneyFmt = stats.money >= 1000 ? `€${(stats.money / 1000).toFixed(1)}k` : `€${stats.money}`
+  const moodPct  = Math.max(0, Math.min(100, stats.mood))
+  const stressPct = Math.max(0, Math.min(100, stats.stress))
+  const moodColor   = moodPct >= 60 ? '#2D9A4E' : moodPct >= 30 ? '#FF7B25' : '#E63946'
+  const stressColor = stressPct <= 40 ? '#2D9A4E' : stressPct <= 70 ? '#FF7B25' : '#E63946'
+
+  return (
     <div style={{
-      minHeight: '100vh',
-      background: dark ? '#1A0800' : 'var(--rh-surface)',
-      backgroundImage: dark
-        ? 'radial-gradient(circle, rgba(255,205,0,0.06) 1px, transparent 1px), radial-gradient(circle, rgba(255,205,0,0.06) 1px, transparent 1px)'
-        : 'radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px), radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px)',
-      backgroundSize: '22px 22px', backgroundPosition: '0 0, 11px 11px',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '32px 20px 64px',
-    }}>{children}</div>
-  )
+      background: paper, borderBottom: `3px solid ${ink}`,
+      padding: '10px 20px',
+      display: 'flex', alignItems: 'center', gap: '20px',
+      flexWrap: 'wrap',
+    }}>
+      {/* Story / chapter */}
+      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{story.title}</span>
+        <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.58rem', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.4 }}>{chapter}</span>
+      </div>
 
-  // ══════════════════════════════════════════
-  // INTRO
-  // ══════════════════════════════════════════
-  if (phase === 'intro') return pageWrap(
-    <div style={{ textAlign: 'center', maxWidth: '640px', width: '100%' }}>
+      <div style={{ width: '1px', height: '32px', background: ink, opacity: 0.15, flexShrink: 0 }} />
 
-      {/* Spotlight rays */}
-      <div style={{ position: 'relative', height: '180px', marginBottom: '-30px' }}>
-        <svg viewBox="0 0 500 180" width="100%" height="180" style={{ position: 'absolute', top: 0, left: 0 }}>
-          <defs>
-            <radialGradient id="ray1" cx="50%" cy="0%" r="100%">
-              <stop offset="0%" stopColor="#FFCD00" stopOpacity="0.45"/>
-              <stop offset="100%" stopColor="#FFCD00" stopOpacity="0"/>
-            </radialGradient>
-            <radialGradient id="ray2" cx="50%" cy="0%" r="100%">
-              <stop offset="0%" stopColor="#FFCD00" stopOpacity="0.25"/>
-              <stop offset="100%" stopColor="#FFCD00" stopOpacity="0"/>
-            </radialGradient>
-          </defs>
-          <ellipse cx="250" cy="0" rx="160" ry="240" fill="url(#ray1)">
-            <animateTransform attributeName="transform" type="rotate"
-              values="-12 250 200;12 250 200;-12 250 200" dur="5s" repeatCount="indefinite"
-              calcMode="spline" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"/>
-          </ellipse>
-          <ellipse cx="250" cy="0" rx="100" ry="180" fill="url(#ray2)">
-            <animateTransform attributeName="transform" type="rotate"
-              values="10 250 200;-10 250 200;10 250 200" dur="4s" repeatCount="indefinite"
-              calcMode="spline" keySplines="0.42 0 0.58 1;0.42 0 0.58 1"/>
-          </ellipse>
-          {/* Stage floor line */}
-          <rect x="0" y="168" width="500" height="12" fill="#2A1208" opacity="0.8"/>
-          <rect x="0" y="165" width="500" height="3" fill="#FFCD00" opacity="0.3"/>
-        </svg>
-        {/* Oracle character on stage */}
-        <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)' }}>
-          <OracleSVG />
+      {/* Money */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontSize: '0.9rem' }}>💰</span>
+          <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1rem', color: ink }}>{moneyFmt}</span>
+          {deltas.money !== 0 && <DeltaBadge key={`m${deltas.n}`} delta={deltas.money} color={deltas.money > 0 ? '#2D9A4E' : '#E63946'} />}
+        </div>
+        <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.55rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.45 }}>Balance</span>
+      </div>
+
+      {/* Mood */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '100px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.58rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.55 }}>😊 Mood</span>
+            {deltas.mood !== 0 && <DeltaBadge key={`md${deltas.n}`} delta={deltas.mood} color={deltas.mood > 0 ? '#2D9A4E' : '#E63946'} />}
+          </div>
+          <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', color: moodColor }}>{moodPct}</span>
+        </div>
+        <div style={{ height: '7px', borderRadius: '9999px', border: `1.5px solid ${ink}`, background: surface, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${moodPct}%`, background: moodColor, borderRadius: '9999px', transition: 'width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.4s' }} />
         </div>
       </div>
 
-      {/* Title */}
-      <div style={{ animation: 'verdict-slam 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both' }}>
-        <div style={{
-          display: 'inline-block', background: '#E63946', color: '#FEF9EE',
-          fontFamily: "'Fredoka One', cursive", fontSize: '0.68rem',
-          letterSpacing: '0.22em', padding: '4px 18px',
-          borderRadius: '9999px', border: '2.5px solid #FFCD00',
-          boxShadow: '3px 3px 0 rgba(255,205,0,0.5)',
-          marginBottom: '16px',
-        }}>★ GAME MODE ★</div>
-        <h1 style={{
-          fontFamily: "'Fredoka One', cursive",
-          fontSize: 'clamp(2.6rem, 7vw, 4.5rem)',
-          lineHeight: 1, color: '#FEF9EE',
-          textShadow: '4px 4px 0 #FFCD00, 7px 7px 0 rgba(255,205,0,0.2)',
-          marginBottom: '16px', letterSpacing: '-0.01em',
-        }}>The Decision Room</h1>
-        <p style={{
-          fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,
-          fontSize: '1rem', lineHeight: 1.6,
-          color: 'rgba(254,249,238,0.72)', marginBottom: '36px',
-        }}>
-          Real financial dilemmas. Branching consequences.<br/>
-          One choice separates the wise from the ruined.
+      {/* Stress */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '100px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.58rem', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.55 }}>😰 Stress</span>
+            {deltas.stress !== 0 && <DeltaBadge key={`s${deltas.n}`} delta={deltas.stress} color={deltas.stress < 0 ? '#2D9A4E' : '#E63946'} />}
+          </div>
+          <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', color: stressColor }}>{stressPct}</span>
+        </div>
+        <div style={{ height: '7px', borderRadius: '9999px', border: `1.5px solid ${ink}`, background: surface, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${stressPct}%`, background: stressColor, borderRadius: '9999px', transition: 'width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.4s' }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Story Select ─────────────────────────────────────────────
+
+function StorySelect({ onSelect }: { onSelect: (s: Story) => void }) {
+  const isMobile = useIsMobile()
+  const diffColor = { Beginner: '#2D9A4E', Intermediate: '#FF7B25', Advanced: '#E63946' }
+
+  return (
+    <div style={{ minHeight: '100vh', background: surface }}>
+      {/* Header */}
+      <div style={{ background: paper, borderBottom: `3px solid ${ink}`, padding: '20px 28px' }}>
+        <Link to="/" style={{ textDecoration: 'none', color: ink, fontFamily: "'Fredoka One', cursive", fontSize: '0.85rem', opacity: 0.6 }}>← Back</Link>
+        <h1 className="text-4xl font-bold" style={{ margin: '8px 0 4px' }}>Decision Room</h1>
+        <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.85rem', opacity: 0.6, margin: 0 }}>
+          Choose your storyline. Every choice has consequences.
         </p>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginBottom: '36px', flexWrap: 'wrap' }}>
-        {[
-          ['2', 'Scenarios'],
-          ['4', 'Choices each'],
-          ['+350', 'XP max'],
-          ['Real', 'Consequences'],
-        ].map(([v, l]) => (
-          <div key={l} style={{
-            padding: '10px 16px', borderRadius: '1rem',
-            border: '2px solid rgba(255,205,0,0.45)',
-            background: 'rgba(255,205,0,0.08)',
-            textAlign: 'center',
-          }}>
-            <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.3rem', color: '#FFCD00', lineHeight: 1 }}>{v}</div>
-            <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(254,249,238,0.5)' }}>{l}</div>
-          </div>
-        ))}
-      </div>
-
-      <button onClick={() => setPhase('briefing')} style={{
-        fontFamily: "'Fredoka One', cursive", fontSize: '1.1rem',
-        letterSpacing: '0.07em', padding: '16px 48px',
-        borderRadius: '9999px', border: '3px solid #FFCD00',
-        background: '#FFCD00', color: '#1A0800',
-        boxShadow: '5px 5px 0 rgba(255,205,0,0.35)',
-        cursor: 'pointer', transition: 'transform 0.1s, box-shadow 0.1s',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-3px,-3px)'; e.currentTarget.style.boxShadow = '8px 8px 0 rgba(255,205,0,0.35)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '5px 5px 0 rgba(255,205,0,0.35)' }}
-      >Enter The Room →</button>
-
-      <div style={{ marginTop: '20px' }}>
-        <Link to="/" style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.75rem', color: 'rgba(254,249,238,0.4)', textDecoration: 'underline' }}>
-          ← Back to Gazette
-        </Link>
-      </div>
-    </div>
-  , true)
-
-  // ══════════════════════════════════════════
-  // BRIEFING
-  // ══════════════════════════════════════════
-  if (phase === 'briefing') return pageWrap(
-    <div style={{
-      width: '100%', maxWidth: '740px',
-      animation: 'briefing-in 0.55s cubic-bezier(0.34,1.56,0.64,1) both',
-    }}>
-      {/* Case file card */}
-      <div style={{
-        background: paper, border: `3px solid ${ink}`,
-        borderRadius: '2.2rem 2rem 2.2rem 2.1rem',
-        boxShadow: `8px 8px 0 ${ink}, 14px 14px 0 color-mix(in srgb, ${ink} 15%, transparent)`,
-        overflow: 'hidden', transform: 'rotate(-0.3deg)',
-      }}>
-        {/* Header */}
-        <div style={{
-          background: '#1A0800', borderBottom: `3px solid #FFCD00`,
-          padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{
-              background: '#FFCD00', color: '#1A0800',
-              fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem',
-              letterSpacing: '0.18em', padding: '3px 14px',
-              borderRadius: '9999px', border: '2px solid #FFCD00',
-            }}>CASE #{scenario.id}</span>
-            <span style={{
-              fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700,
-              fontSize: '0.62rem', letterSpacing: '0.16em',
-              textTransform: 'uppercase', color: 'rgba(254,249,238,0.55)',
-            }}>{scenario.category}</span>
-          </div>
-          <span style={{
-            fontFamily: "'Fredoka One', cursive", fontSize: '0.75rem',
-            color: '#E63946', letterSpacing: '0.1em',
-            border: '2px solid #E63946', padding: '2px 10px', borderRadius: '4px',
-            transform: 'rotate(2deg)', display: 'inline-block',
-          }}>CONFIDENTIAL</span>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 180px', gap: '0' }}>
-          {/* Story column */}
-          <div style={{ padding: '28px 24px 24px', borderRight: `2px solid ${ink}` }}>
-            <h2 style={{
-              fontFamily: "'Fredoka One', cursive",
-              fontSize: 'clamp(1.6rem, 3.5vw, 2.4rem)',
-              lineHeight: 1.1, marginBottom: '18px',
-            }}>{scenario.title}</h2>
-            {scenario.story.split('\n\n').map((p, i) => (
-              <p key={i} style={{
-                fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500,
-                fontSize: '0.9rem', lineHeight: 1.7, opacity: 0.8,
-                marginBottom: '14px',
-              }}>
-                {i === 0 && <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '2.8rem', lineHeight: 0.8, float: 'left', marginRight: '6px', marginTop: '4px' }}>{p[0]}</span>}
-                {i === 0 ? p.slice(1) : p}
-              </p>
-            ))}
-            <button onClick={() => setPhase('choosing')} style={{
-              fontFamily: "'Fredoka One', cursive", fontSize: '0.9rem',
-              letterSpacing: '0.06em', padding: '12px 28px',
-              borderRadius: '9999px', border: `2.5px solid ${ink}`,
-              background: '#E63946', color: '#FEF9EE',
-              boxShadow: `4px 4px 0 ${ink}`, cursor: 'pointer',
-              transition: 'transform 0.1s, box-shadow 0.1s', marginTop: '8px',
+      {/* Story cards */}
+      <div style={{ padding: isMobile ? '24px 16px' : '36px 28px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '20px', maxWidth: '1100px', margin: '0 auto' }}>
+        {STORIES.map(story => (
+          <button
+            key={story.id}
+            onClick={() => { play('click'); onSelect(story) }}
+            style={{
+              background: paper, border: `3px solid ${ink}`,
+              borderRadius: '20px 22px 20px 21px',
+              boxShadow: `6px 6px 0 ${ink}`,
+              padding: '28px 24px',
+              textAlign: 'left', cursor: 'pointer',
+              transition: 'transform 0.12s, box-shadow 0.12s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
-            >Make Your Choice →</button>
-          </div>
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-3px,-3px)'; e.currentTarget.style.boxShadow = `9px 9px 0 ${ink}` }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
+          >
+            {/* Color strip */}
+            <div style={{ height: '6px', background: story.color, borderRadius: '9999px', marginBottom: '16px', border: `2px solid ${ink}` }} />
 
-          {/* Oracle sidebar */}
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', padding: '20px 12px',
-            background: surface,
-          }}>
-            <OracleSVG />
-            <div className="rh-speech-bubble" style={{ marginTop: '8px', textAlign: 'center', maxWidth: '150px' }}>
-              <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', lineHeight: 1.4, margin: 0 }}>
-                Choose carefully, my friend. Some mistakes are… permanent.
-              </p>
+            <div style={{ fontSize: '2.8rem', marginBottom: '10px' }}>{story.emoji}</div>
+            <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.3rem', color: ink, marginBottom: '6px' }}>{story.title}</div>
+            <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.82rem', opacity: 0.65, color: ink, lineHeight: 1.4, marginBottom: '18px' }}>{story.subtitle}</div>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ background: story.color, border: `2px solid ${ink}`, borderRadius: '9999px', padding: '3px 12px', fontFamily: "'Fredoka One', cursive", fontSize: '0.68rem', color: '#1A0800' }}>
+                {story.duration}
+              </span>
+              <span style={{ background: diffColor[story.difficulty], border: `2px solid ${ink}`, borderRadius: '9999px', padding: '3px 12px', fontFamily: "'Fredoka One', cursive", fontSize: '0.68rem', color: '#1A0800' }}>
+                {story.difficulty}
+              </span>
+              <span style={{ background: surface, border: `2px solid ${ink}`, borderRadius: '9999px', padding: '3px 12px', fontFamily: "'Fredoka One', cursive", fontSize: '0.68rem', color: ink }}>
+                {story.chapters.length} chapters
+              </span>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
-  // ══════════════════════════════════════════
-  // CHOOSING
-  // ══════════════════════════════════════════
-  if (phase === 'choosing') return pageWrap(
-    <div style={{ width: '100%', maxWidth: '900px' }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-        <div style={{
-          display: 'inline-block', background: '#E63946', color: '#FEF9EE',
-          fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem',
-          letterSpacing: '0.2em', padding: '4px 16px', borderRadius: '9999px',
-          border: `2px solid ${ink}`, boxShadow: `2px 2px 0 ${ink}`, marginBottom: '10px',
-        }}>SCENARIO {scenario.id} / {SCENARIOS.length}</div>
-        <h2 style={{
-          fontFamily: "'Fredoka One', cursive",
-          fontSize: 'clamp(1.6rem, 4vw, 2.6rem)',
-          lineHeight: 1.1, marginBottom: '6px',
-          textShadow: `3px 3px 0 ${ink}`,
-        }}>{scenario.title}</h2>
-        <p style={{
-          fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,
-          fontSize: '0.82rem', opacity: 0.55,
-        }}>Hover to inspect · Click to commit · No going back</p>
-      </div>
-
-      {/* 2×2 choice grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '18px' }}>
-        {scenario.choices.map(choice => (
-          <ChoiceCard
-            key={choice.letter}
-            choice={choice}
-            onSelect={handleChoose}
-            chosen={chosenChoice?.letter === choice.letter}
-            anyChosen={chosenChoice !== null}
-          />
+          </button>
         ))}
       </div>
+
+      {/* Teaser */}
+      <div style={{ padding: '0 28px 40px', textAlign: 'center', opacity: 0.5 }}>
+        <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.78rem', color: ink }}>
+          More stories coming soon — startup funding, real estate, retirement planning
+        </p>
+      </div>
     </div>
   )
+}
 
-  // ══════════════════════════════════════════
-  // CONSEQUENCE
-  // ══════════════════════════════════════════
-  if (phase === 'consequence' && chosenChoice) {
-    const cfg = OUTCOME_CONFIG[chosenChoice.outcome]
-    return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: cfg.bg,
-        backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.12) 1px, transparent 1px)',
-        backgroundSize: '20px 20px',
-        transition: 'background 0.6s',
-        animation: showConsequence ? 'consequence-in 0.5s ease-out both' : undefined,
-        padding: '40px 24px',
-      }}>
-        {chosenChoice.outcome === 'brilliant' && <CoinShower />}
-        {chosenChoice.outcome === 'disaster' && (
-          <div style={{ position: 'fixed', inset: 0, animation: 'disaster-shake 0.6s 0.2s ease both', pointerEvents: 'none', zIndex: 10 }}/>
+// ─── Story Engine ─────────────────────────────────────────────
+
+function StoryEngine({ story, onExit }: { story: Story; onExit: () => void }) {
+  const isMobile = useIsMobile()
+  const [stats, setStats] = useState<Stats>({ ...story.startStats, flags: { ...story.startStats.flags } })
+  const [sceneId, setSceneId] = useState(story.startScene)
+  const [displayedText, setDisplayedText] = useState('')
+  const [textDone, setTextDone] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
+  // Track last stat deltas so the panel can show them (nonce forces re-mount on each choice)
+  const [panelDeltas, setPanelDeltas] = useState<{ money: number; mood: number; stress: number; n: number }>({ money: 0, mood: 0, stress: 0, n: 0 })
+  const deltaNonce = useRef(0)
+  const textRef = useRef('')
+
+  const scene = story.scenes[sceneId]
+  const fullText = typeof scene.text === 'function' ? scene.text(stats) : scene.text
+
+  // Typewriter effect
+  useEffect(() => {
+    setDisplayedText('')
+    setTextDone(false)
+    textRef.current = fullText
+    let i = 0
+    const speed = fullText.length > 400 ? 12 : 18
+    const interval = setInterval(() => {
+      if (textRef.current !== fullText) { clearInterval(interval); return }
+      i++
+      setDisplayedText(fullText.slice(0, i))
+      if (i >= fullText.length) { setTextDone(true); clearInterval(interval) }
+    }, speed)
+    return () => clearInterval(interval)
+  }, [sceneId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-advance narrative scenes
+  useEffect(() => {
+    if (scene.autoNext && textDone) {
+      const t = setTimeout(() => goTo(scene.autoNext!, scene.onEnter ? scene.onEnter(stats) : {}), 1200)
+      return () => clearTimeout(t)
+    }
+  }, [textDone, sceneId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function applyEffect(effect: Choice['effect'], prevStats: Stats): Stats {
+    if (!effect) return prevStats
+    return {
+      money:  Math.max(0, (prevStats.money  ?? 0) + (effect.money  ?? 0)),
+      mood:   Math.min(100, Math.max(0, (prevStats.mood   ?? 50) + (effect.mood   ?? 0))),
+      stress: Math.min(100, Math.max(0, (prevStats.stress ?? 50) + (effect.stress ?? 0))),
+      flags: { ...prevStats.flags, ...(effect.flags ?? {}) },
+    }
+  }
+
+  function goTo(nextId: string, extraEffect: Partial<Omit<Stats, 'flags'>> & { flags?: Record<string, boolean | number> } = {}) {
+    if (transitioning) return
+    setTransitioning(true)
+    setTimeout(() => {
+      setStats(prev => {
+        const withEnter = applyEffect(extraEffect as Choice['effect'], prev)
+        const nextScene = story.scenes[nextId]
+        if (nextScene?.onEnter) {
+          const enterEff = nextScene.onEnter(withEnter)
+          const after = applyEffect(enterEff as Choice['effect'], withEnter)
+          setPanelDeltas({ money: after.money - prev.money, mood: after.mood - prev.mood, stress: after.stress - prev.stress, n: ++deltaNonce.current })
+          return after
+        }
+        setPanelDeltas({ money: withEnter.money - prev.money, mood: withEnter.mood - prev.mood, stress: withEnter.stress - prev.stress })
+        return withEnter
+      })
+      setSceneId(nextId)
+      setTransitioning(false)
+    }, 300)
+  }
+
+  function handleChoice(choice: Choice) {
+    if (!textDone || transitioning) return
+    play('click')
+    const nextId = typeof choice.next === 'function' ? (choice.next as (s: Stats) => string)(stats) : choice.next
+    setStats(prev => {
+      const after = applyEffect(choice.effect, prev)
+      setPanelDeltas({ money: after.money - prev.money, mood: after.mood - prev.mood, stress: after.stress - prev.stress })
+      return after
+    })
+    goTo(nextId)
+  }
+
+  function skipText() {
+    setDisplayedText(fullText)
+    setTextDone(true)
+  }
+
+  // Submit XP on ending
+  useEffect(() => {
+    if (!scene.isEnding) return
+    const session = getSession()
+    if (!session) return
+    const xp = scene.xp ?? 250
+    play('complete')
+    submitGame({ userId: session.id, gameType: 'decision', xpEarned: xp, score: 1, total: 1, metadata: { story: story.id, ending: scene.id } })
+      .then(res => { if (res.newBadges.length > 0) setTimeout(() => play('badge'), 800) })
+      .catch(() => {})
+  }, [scene.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const chapter = story.chapters[Math.min(scene.chapter - 1, story.chapters.length - 1)]
+  const visibleChoices = (scene.choices ?? []).filter(c => !c.condition || c.condition(stats))
+
+  return (
+    <div style={{ minHeight: '100vh', background: surface, display: 'flex', flexDirection: 'column' }}>
+
+      {/* Sticky header: back button */}
+      <div style={{ background: paper, borderBottom: `2px solid ${ink}`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px', position: 'sticky', top: 0, zIndex: 51 }}>
+        <button onClick={onExit} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Fredoka One', cursive", fontSize: '0.85rem', color: ink, opacity: 0.6, padding: 0, flexShrink: 0 }}>← Stories</button>
+      </div>
+
+      {/* Persistent stats panel — always visible */}
+      <div style={{ position: 'sticky', top: '41px', zIndex: 50 }}>
+        <StatsPanel stats={stats} deltas={panelDeltas} story={story} chapter={chapter} />
+      </div>
+
+      {/* Scene */}
+      <div style={{ flex: 1, maxWidth: '720px', margin: '0 auto', width: '100%', padding: isMobile ? '24px 16px' : '40px 24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+        {/* Chapter badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ background: story.color, border: `2px solid ${ink}`, borderRadius: '9999px', padding: '3px 14px', fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#1A0800', boxShadow: `2px 2px 0 ${ink}` }}>
+            Chapter {scene.chapter}: {chapter}
+          </span>
+          {scene.isEnding && (
+            <span style={{ background: scene.endingColor ?? '#FFCD00', border: `2px solid ${ink}`, borderRadius: '9999px', padding: '3px 14px', fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', color: '#1A0800', boxShadow: `2px 2px 0 ${ink}` }}>
+              {scene.endingLabel}
+            </span>
+          )}
+        </div>
+
+        {/* Scene card */}
+        <div
+          style={{ background: paper, border: `3px solid ${ink}`, borderRadius: '20px 22px 20px 21px', boxShadow: `8px 8px 0 ${ink}`, overflow: 'hidden', cursor: textDone ? 'default' : 'pointer' }}
+          onClick={!textDone ? skipText : undefined}
+        >
+          <div style={{ background: story.color, padding: '20px 24px', borderBottom: `3px solid ${ink}`, display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <span style={{ fontSize: isMobile ? '2.4rem' : '3rem' }}>{scene.emoji}</span>
+            <h2 style={{ fontFamily: "'Fredoka One', cursive", fontSize: isMobile ? '1.2rem' : '1.5rem', color: '#1A0800', margin: 0 }}>{scene.title}</h2>
+          </div>
+          <div style={{ padding: isMobile ? '20px 18px' : '28px 28px' }}>
+            <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: isMobile ? '0.9rem' : '0.95rem', lineHeight: 1.7, color: ink, margin: 0, whiteSpace: 'pre-wrap' }}>
+              {displayedText}
+              {!textDone && <span style={{ animation: 'heartbeat 0.8s ease-in-out infinite', display: 'inline-block', marginLeft: '2px' }}>▌</span>}
+            </p>
+            {!textDone && (
+              <div style={{ marginTop: '14px', opacity: 0.45, fontFamily: "'Fredoka One', cursive", fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>tap to skip →</div>
+            )}
+          </div>
+        </div>
+
+        {/* Choices */}
+        {textDone && !scene.isEnding && visibleChoices.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', animation: 'bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+            <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.5, color: ink }}>What do you do?</div>
+            {visibleChoices.map((choice, i) => (
+              <button
+                key={i}
+                onClick={() => handleChoice(choice)}
+                disabled={transitioning}
+                style={{
+                  background: paper, border: `3px solid ${ink}`,
+                  borderRadius: '14px 16px 14px 15px',
+                  boxShadow: `5px 5px 0 ${ink}`,
+                  padding: '16px 20px',
+                  display: 'flex', alignItems: 'flex-start', gap: '14px',
+                  cursor: 'pointer', textAlign: 'left',
+                  transition: 'transform 0.1s, box-shadow 0.1s',
+                  opacity: transitioning ? 0.5 : 1,
+                }}
+                onMouseEnter={e => { if (!transitioning) { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `7px 7px 0 ${ink}` } }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `5px 5px 0 ${ink}` }}
+              >
+                <span style={{ fontSize: '1.6rem', flexShrink: 0, marginTop: '2px' }}>{choice.emoji}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ marginBottom: '4px' }}>
+                    <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.95rem', color: ink }}>{choice.label}</span>
+                  </div>
+                  <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.78rem', opacity: 0.65, color: ink, lineHeight: 1.4 }}>{choice.detail}</div>
+                </div>
+                <span style={{ fontSize: '1.1rem', flexShrink: 0, alignSelf: 'center', opacity: 0.45 }}>→</span>
+              </button>
+            ))}
+          </div>
         )}
 
-        <div style={{ maxWidth: '560px', width: '100%', textAlign: 'center' }}>
-          {/* Outcome label */}
-          <div style={{
-            display: 'inline-block', background: 'rgba(0,0,0,0.35)',
-            border: '2.5px solid rgba(255,255,255,0.4)',
-            color: 'white', fontFamily: "'Fredoka One', cursive",
-            fontSize: '0.72rem', letterSpacing: '0.22em',
-            padding: '5px 18px', borderRadius: '9999px', marginBottom: '16px',
-          }}>{cfg.label}</div>
-
-          {/* Consequence SVG */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-            <OutcomeSVG outcome={chosenChoice.outcome} xp={chosenChoice.xp} />
-          </div>
-
-          {/* Snap story */}
-          <div style={{
-            background: 'rgba(0,0,0,0.3)', border: '2px solid rgba(255,255,255,0.25)',
-            borderRadius: '1.4rem', padding: '18px 22px', marginBottom: '20px',
-            animation: 'slam 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.5s both',
-          }}>
-            <p style={{
-              fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,
-              fontSize: '0.9rem', lineHeight: 1.65, color: 'white',
-              margin: 0,
-            }}>{chosenChoice.snap}</p>
-          </div>
-
-          {/* Timeline */}
-          <div style={{
-            display: 'flex', gap: '8px', justifyContent: 'center',
-            animation: 'fly-in-left 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.8s both',
-          }}>
-            {chosenChoice.timeline.map((t, i) => (
-              <div key={i} style={{
-                flex: 1, background: t.good ? 'rgba(45,154,78,0.5)' : 'rgba(230,57,70,0.5)',
-                border: `2px solid ${t.good ? '#2D9A4E' : '#E63946'}`,
-                borderRadius: '1rem', padding: '10px 8px', textAlign: 'center',
-              }}>
-                <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.62rem', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.65)', marginBottom: '5px' }}>{t.label}</div>
-                <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', color: 'white', lineHeight: 1.3 }}>{t.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ══════════════════════════════════════════
-  // VERDICT
-  // ══════════════════════════════════════════
-  if (phase === 'verdict' && chosenChoice) {
-    const cfg = OUTCOME_CONFIG[chosenChoice.outcome]
-    const isGood = chosenChoice.outcome === 'brilliant' || chosenChoice.outcome === 'smart'
-
-    return pageWrap(
-      <div style={{ width: '100%', maxWidth: '720px' }}>
-        {chosenChoice.outcome === 'brilliant' && <CoinShower />}
-
-        {/* Newspaper EXTRA card */}
-        <div style={{
-          background: paper, border: `3px solid ${ink}`,
-          borderRadius: '2.2rem 2rem 2.2rem 2.1rem',
-          boxShadow: `8px 8px 0 ${ink}, 14px 14px 0 color-mix(in srgb, ${ink} 15%, transparent)`,
-          overflow: 'hidden', transform: 'rotate(0.3deg)',
-          animation: 'briefing-in 0.5s cubic-bezier(0.34,1.56,0.64,1) both',
-        }}>
-
-          {/* EXTRA! banner */}
-          <div style={{
-            background: '#E63946', borderBottom: `3px solid ${ink}`,
-            padding: '10px 24px', textAlign: 'center',
-            backgroundImage: 'repeating-linear-gradient(-45deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 6px, transparent 6px, transparent 12px)',
-          }}>
-            <span style={{
-              fontFamily: "'Fredoka One', cursive", fontSize: '1rem',
-              letterSpacing: '0.4em', color: '#FFCD00',
-              textShadow: '2px 2px 0 rgba(0,0,0,0.3)',
-            }}>✦ EXTRA! EXTRA! ✦</span>
-          </div>
-
-          <div style={{ padding: '28px 28px 24px' }}>
-            {/* Outcome stamp */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', marginBottom: '20px' }}>
-              <div style={{
-                flexShrink: 0,
-                border: `4px solid ${cfg.accent}`, borderRadius: '6px',
-                padding: '6px 14px', transform: 'rotate(-4deg)',
-                fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem',
-                letterSpacing: '0.12em', color: cfg.accent,
-                boxShadow: `3px 3px 0 ${cfg.accent}`,
-                animation: 'xp-count-pop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s both',
-              }}>{cfg.stamp}</div>
-              <h2 style={{
-                fontFamily: "'Fredoka One', cursive",
-                fontSize: 'clamp(1.3rem, 3vw, 2rem)',
-                lineHeight: 1.15, flex: 1,
-                animation: 'verdict-slam 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.15s both',
-              }}>{chosenChoice.headline}</h2>
-            </div>
-
-            {/* XP earned */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '14px',
-              border: `3px solid ${ink}`,
-              borderRadius: '9999px', padding: '12px 28px',
-              background: chosenChoice.xp > 0 ? '#FFCD00' : surface,
-              boxShadow: `5px 5px 0 ${ink}`, marginBottom: '22px',
-              animation: 'xp-count-pop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.5s both',
-            }}>
-              <span style={{ fontSize: '1.6rem' }}>{chosenChoice.xp > 150 ? '⭐' : chosenChoice.xp > 50 ? '🪙' : '💀'}</span>
-              <div>
-                <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.5rem', lineHeight: 1, color: '#1A0800' }}>
-                  +{chosenChoice.xp} XP
+        {/* Ending screen */}
+        {textDone && scene.isEnding && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', animation: 'bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.3s both' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              {[
+                { label: 'Final Balance', value: `€${stats.money.toLocaleString()}`, color: '#FFCD00' },
+                { label: 'Mood', value: `${stats.mood}/100`, color: '#2D9A4E' },
+                { label: 'Stress', value: `${stats.stress}/100`, color: '#E63946' },
+              ].map(s => (
+                <div key={s.label} style={{ background: s.color, border: `2.5px solid ${ink}`, borderRadius: '12px', padding: '14px 10px', textAlign: 'center', boxShadow: `3px 3px 0 ${ink}` }}>
+                  <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.1rem', color: '#1A0800' }}>{s.value}</div>
+                  <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.65, color: '#1A0800', marginTop: '3px' }}>{s.label}</div>
                 </div>
-                <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.6, color: '#1A0800' }}>Earned this round</div>
-              </div>
+              ))}
             </div>
-
-            {/* Lesson pullquote */}
-            <div style={{
-              borderLeft: `5px solid ${cfg.accent}`,
-              paddingLeft: '18px', marginBottom: '24px',
-              animation: 'fly-in-left 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.7s both',
-            }}>
-              <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.58rem', letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.45, marginBottom: '6px' }}>What The Experts Say</div>
-              <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.88rem', lineHeight: 1.65, opacity: 0.85, margin: 0 }}>
-                {chosenChoice.lesson}
-              </p>
-            </div>
-
-            {/* CTA row */}
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-              {scenarioIdx < SCENARIOS.length - 1 ? (
-                <button onClick={handleNextScenario} style={{
-                  fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem',
-                  letterSpacing: '0.06em', padding: '12px 28px',
-                  borderRadius: '9999px', border: `2.5px solid ${ink}`,
-                  background: isGood ? '#FFCD00' : '#E63946',
-                  color: isGood ? '#1A0800' : '#FEF9EE',
-                  boxShadow: `4px 4px 0 ${ink}`, cursor: 'pointer',
-                  transition: 'transform 0.1s, box-shadow 0.1s',
-                }}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => { play('click'); onExit() }}
+                style={{ flex: 1, fontFamily: "'Fredoka One', cursive", fontSize: '0.95rem', padding: '14px 24px', borderRadius: '9999px', border: `3px solid ${ink}`, background: '#FFCD00', color: '#1A0800', boxShadow: `4px 4px 0 ${ink}`, cursor: 'pointer', transition: 'transform 0.1s, box-shadow 0.1s' }}
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
                 onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
-                >Next Scenario →</button>
-              ) : (
-                <button onClick={() => { setScenarioIdx(0); setChosenChoice(null); setPhase('intro') }} style={{
-                  fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem',
-                  letterSpacing: '0.06em', padding: '12px 28px',
-                  borderRadius: '9999px', border: `2.5px solid ${ink}`,
-                  background: '#FFCD00', color: '#1A0800',
-                  boxShadow: `4px 4px 0 ${ink}`, cursor: 'pointer',
-                  transition: 'transform 0.1s, box-shadow 0.1s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
-                >Play Again ↺</button>
-              )}
-              <Link to="/quiz" style={{
-                fontFamily: "'Fredoka One', cursive", fontSize: '0.88rem',
-                letterSpacing: '0.06em', padding: '12px 28px',
-                borderRadius: '9999px', border: `2.5px solid ${ink}`,
-                background: surface, color: ink,
-                boxShadow: `4px 4px 0 ${ink}`, textDecoration: 'none',
-                transition: 'transform 0.1s, box-shadow 0.1s', display: 'inline-block',
-              }}
-              onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
-              onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
-              >Try Quick Rounds →</Link>
-              <Link to="/leaderboard" style={{
-                fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700,
-                fontSize: '0.75rem', opacity: 0.45, textDecoration: 'underline',
-                color: ink, display: 'inline-block',
-              }}>View Leaderboard</Link>
+              >Try Another Story →</button>
             </div>
           </div>
-        </div>
+        )}
       </div>
-    )
+    </div>
+  )
+}
+
+// ─── Main export ──────────────────────────────────────────────
+
+export default function Decision() {
+  const [activeStory, setActiveStory] = useState<Story | null>(null)
+
+  useEffect(() => { preload() }, [])
+
+  if (activeStory) {
+    return <StoryEngine story={activeStory} onExit={() => setActiveStory(null)} />
   }
 
-  return null
+  return <StorySelect onSelect={setActiveStory} />
 }

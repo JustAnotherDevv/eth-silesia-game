@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(s)
       setSessionState(s)
       // Sync platform admin flag
-      const adminFlag = (user as Record<string, unknown>).is_platform_admin === true
+      const adminFlag = (user as unknown as Record<string, unknown>).is_platform_admin === true
       localStorage.setItem(`xp_admin_${user.id}`, String(adminFlag))
       setIsAdmin(adminFlag)
       return s
@@ -93,10 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   async function signOut() {
-    await supabase.auth.signOut()
+    // Clear local state immediately — don't block on Supabase network call
     clearSession()
     setSessionState(null)
     setIsAdmin(false)
+    // Best-effort server-side sign out (fire and forget)
+    supabase.auth.signOut().catch(() => {})
   }
 
   return (

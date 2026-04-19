@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { EPISODES, CHARS, type CharId, type Mood, type Scene, type Choice, type Episode } from '../data/episodes'
 import { getSession } from '../lib/session'

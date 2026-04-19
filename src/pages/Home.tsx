@@ -530,7 +530,7 @@ export default function Home() {
     return (
       <div style={{ minHeight: '100vh', background: surface, padding: '16px 16px 72px' }}>
         {/* Masthead */}
-        <div style={{ textAlign: 'center', padding: '16px 12px', borderBottom: `3px double ${ink}`, marginBottom: '16px', border: `3px solid ${ink}`, borderRadius: '1.2rem', background: paper, marginBottom: '12px' }}>
+        <div style={{ textAlign: 'center', padding: '16px 12px', border: `3px solid ${ink}`, borderRadius: '1.2rem', background: paper, marginBottom: '12px' }}>
           <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2rem,10vw,3.2rem)', lineHeight: 1, margin: '0 0 4px', letterSpacing: '-0.01em' }}>The XP Gazette</h1>
           <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', opacity: 0.55, margin: 0 }}>"All The Financial News Fit To Play"</p>
         </div>

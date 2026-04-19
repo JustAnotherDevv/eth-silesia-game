@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // ── Shared constants ───────────────────────────────────────────────────────────
@@ -281,7 +281,7 @@ function drawBossHacker(ctx: CanvasRenderingContext2D, boss: Boss, tick: number)
   ctx.restore()
 }
 
-function drawPlayer(ctx: CanvasRenderingContext2D, p: Player, tick: number) {
+function drawPlayer(ctx: CanvasRenderingContext2D, p: Player, _tick: number) {
   const bob = p.onGround && Math.abs(p.vx)>0.3 ? Math.sin(p.wFrame*Math.PI/3)*2.5 : 0
   const ls   = Math.sin(p.wFrame*Math.PI/3)*14
   const bx=p.x, by=p.y+bob
@@ -296,7 +296,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, p: Player, tick: number) {
     ctx.restore()
   }
   ctx.fillStyle='#5DC264';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(bx+16,by+38,17,15,0,0,Math.PI*2);ctx.fill();ctx.stroke()
-  for(const[sx,flip] of[[-1,-1],[1,1]] as [number,number][]){
+  for(const[,flip] of[[-1,-1],[1,1]] as [number,number][]){
     ctx.save();ctx.translate(bx+16,by+50);ctx.scale(flip,1)
     ctx.fillStyle='#E63946';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(8,-4);ctx.lineTo(8,4);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()
   }
@@ -2045,7 +2045,7 @@ function drawW3Frog(ctx: CanvasRenderingContext2D, player: W3Player, camX: numbe
   drawLeg(8,1); drawLeg(24,-1)
   ctx.fillStyle='#5DC264';ctx.strokeStyle='#1A0800';ctx.lineWidth=3
   ctx.beginPath();ctx.ellipse(bx+16,by+38,17,15,0,0,Math.PI*2);ctx.fill();ctx.stroke()
-  const drawBTHalf=(dx:number,flip:number)=>{
+  const drawBTHalf=(_dx:number,flip:number)=>{
     ctx.save();ctx.translate(bx+16,by+50);ctx.scale(flip,1)
     ctx.fillStyle='#E63946';ctx.strokeStyle='#1A0800';ctx.lineWidth=1.5
     ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(8,-4);ctx.lineTo(8,4);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()
@@ -2273,7 +2273,7 @@ function CitySidescroller({ onBack }: { onBack: () => void }) {
   const [encounter,    setEncounter]    = useState<typeof W3_ENCOUNTERS[0]|null>(null)
   const [choiceResult, setChoiceResult] = useState<{correct:boolean;reason:string}|null>(null)
   const [xpDisplay,    setXpDisplay]    = useState(0)
-  const [hpDisplay,    setHpDisplay]    = useState(3)
+  const [,    setHpDisplay]    = useState(3)
   const [showHint,     setShowHint]     = useState(true)
   const [quizAnim,     setQuizAnim]     = useState(false)
 
@@ -2333,7 +2333,7 @@ function CitySidescroller({ onBack }: { onBack: () => void }) {
             if(p.x+32>enc.x&&p.x<enc.x+enc.w&&p.y+W3_CHAR_H>enc.y){gs.phase='quiz';gs.encounter=enc;triggerQuiz(enc)}
           }
         }
-        if(p.x>=W3_WORLD_W-120&&gs.phase!=='win'){gs.phase='win';setPhase('win')}
+        if(p.x>=W3_WORLD_W-120&&(gs.phase as string)!=='win'){gs.phase='win' as never;setPhase('win')}
       }
       particlesRef.current=updateW3Particles(particlesRef.current)
       ctx.clearRect(0,0,W,H)

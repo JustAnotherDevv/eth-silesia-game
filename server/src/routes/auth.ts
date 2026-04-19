@@ -6,11 +6,11 @@ import { sanitizeError } from '../middleware/errorHandler.js'
 
 export const auth = new Hono()
 
-const ORG_DB_IDS: Record<string, string> = {
-  ETH_SIL:  'eth-silesia',
-  PKO_BANK: 'pko-bank',
-  WAW_UNI:  'warsaw-uni',
-  FINTECH:  'fintech-hub',
+const ORG_KEY_TO_NAME: Record<string, string> = {
+  ETH_SIL:  'ETH Silesia',
+  PKO_BANK: 'PKO Bank',
+  WAW_UNI:  'Warsaw University',
+  FINTECH:  'FinTech Hub',
 }
 
 // A07: rate-limit registration to prevent credential stuffing / spam
@@ -85,14 +85,33 @@ auth.post('/register', registrationLimiter, async (c) => {
     return c.json({ error: sanitizeError(dbError) }, 500)
   }
 
-  const dbOrgId = typeof orgId === 'string' ? (ORG_DB_IDS[orgId] ?? orgId) : null
-  if (dbOrgId) {
-    const { data: org } = await supabase.from('orgs').select('id').eq('id', dbOrgId).maybeSingle()
-    if (org) {
+  if (typeof orgId === 'string' && orgId) {
+    // Try direct ID lookup first; if that misses, fall back to name match
+    const orgName = ORG_KEY_TO_NAME[orgId]
+    let foundOrg: { id: string } | null = null
+
+    const byId = await supabase.from('orgs').select('id').eq('id', orgId).maybeSingle()
+    if (byId.data) {
+      foundOrg = byId.data
+    } else if (orgName) {
+      const byName = await supabase.from('orgs').select('id').ilike('name', orgName).maybeSingle()
+      if (byName.data) foundOrg = byName.data
+    }
+
+    if (foundOrg) {
       await supabase.from('org_members').upsert(
-        { user_id: user.id, org_id: dbOrgId },
+        { user_id: user.id, org_id: foundOrg.id },
         { onConflict: 'user_id,org_id', ignoreDuplicates: true }
       )
+    } else {
+      // No matching org found — auto-join the first public org as fallback
+      const { data: firstOrg } = await supabase.from('orgs').select('id').eq('is_public', true).limit(1).maybeSingle()
+      if (firstOrg) {
+        await supabase.from('org_members').upsert(
+          { user_id: user.id, org_id: firstOrg.id },
+          { onConflict: 'user_id,org_id', ignoreDuplicates: true }
+        )
+      }
     }
   }
 

@@ -29,13 +29,26 @@ export function OrgSwitcher() {
     getOrgs().then(setAllOrgs).catch(console.error)
   }, [])
 
-  // Load user's current orgs
+  // Load user's current orgs; auto-join first public org if they have none
   useEffect(() => {
     if (!session?.id) return
     getUserOrgs(session.id)
-      .then(orgs => {
-        setJoined(orgs)
-        if (orgs.length > 0 && !currentId) setCurrentId(orgs[0].id)
+      .then(async orgs => {
+        if (orgs.length > 0) {
+          setJoined(orgs)
+          if (!currentId) setCurrentId(orgs[0].id)
+          return
+        }
+        // User has no spaces — auto-join the first available public one
+        try {
+          const publicOrgs = await getOrgs()
+          if (publicOrgs.length === 0) return
+          const first = publicOrgs[0]
+          await joinOrg(first.id)
+          setJoined([first])
+          setCurrentId(first.id)
+          setAllOrgs(publicOrgs)
+        } catch { /* ignore — user can join manually */ }
       })
       .catch(console.error)
   }, [session?.id])

@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createUser, getUser } from '../lib/api'
+import { getUser } from '../lib/api'
 import { setSession } from '../lib/session'
 import { supabase } from '../lib/supabase'
 
-const ORG_DB_IDS: Record<string, string> = {
-  ETH_SIL:  'eth-silesia',
-  PKO_BANK: 'pko-bank',
-  WAW_UNI:  'warsaw-uni',
-  FINTECH:  'fintech-hub',
-}
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'

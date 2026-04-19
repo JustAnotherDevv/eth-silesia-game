@@ -171,7 +171,7 @@ export default function Profile() {
   }, [])
 
   async function handleSignOut() {
-    await signOut()
+    try { await signOut() } catch { /* local state is cleared regardless */ }
     navigate('/onboarding')
   }
 

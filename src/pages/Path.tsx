@@ -3,6 +3,9 @@ import { useIsMobile } from '../lib/responsive'
 import { submitGame, getPathProgress } from '../lib/api'
 import { getSession } from '../lib/session'
 import { play, preload } from '../lib/sounds'
+import { useOrg } from '../contexts/OrgContext'
+import { getPathContent } from '../data/pathContent'
+import type { LessonDef, PathNodeData, Chapter, Status } from '../data/pathContent'
 
 const ink     = 'var(--rh-ink)'
 const paper   = 'var(--rh-paper)'
@@ -10,262 +13,8 @@ const surface = 'var(--rh-surface)'
 
 // ─── Types ────────────────────────────────────────────────────
 
-type Status    = 'completed' | 'active' | 'locked'
 type ModalPhase = 'intro' | 'lesson' | 'game' | 'victory'
 
-interface GameQ   { q: string; choices: string[]; correct: number; explanation: string }
-interface Slide   { headline: string; body: string; emoji: string; color: string }
-interface LessonDef {
-  mascotType: 'professor' | 'piggy' | 'wizard'
-  introQuote: string
-  slides: Slide[]
-  game: { title: string; questions: GameQ[] }
-}
-interface PathNodeData {
-  id: number; title: string; desc: string; icon: string
-  chapter: number; status: Status; xp: number
-}
-interface Chapter { id: number; title: string; color: string; icon: string }
-
-// ─── Data ─────────────────────────────────────────────────────
-
-const CHAPTERS: Chapter[] = [
-  { id: 1, title: 'Finance Basics',    color: '#FFCD00', icon: '🎓' },
-  { id: 2, title: 'Budgeting',         color: '#2D9A4E', icon: '📊' },
-  { id: 3, title: 'Smart Saving',      color: '#1565C0', icon: '🏦' },
-  { id: 4, title: 'Investing',         color: '#FF7B25', icon: '📈' },
-  { id: 5, title: 'Financial Mastery', color: '#7B2D8B', icon: '🏆' },
-]
-
-const NODES: PathNodeData[] = [
-  { id:  1, title: 'What Is Money?',        desc: 'From barter to crypto — how money became the language of value.',              icon: '💰', chapter: 1, status: 'completed', xp: 50  },
-  { id:  2, title: 'Debit vs Credit',       desc: "One spends what you have. The other borrows what you don't.",                  icon: '💳', chapter: 1, status: 'completed', xp: 75  },
-  { id:  3, title: 'How Banks Work',        desc: 'Why your money earns 1.5% while the bank charges borrowers 12%.',             icon: '🏦', chapter: 1, status: 'completed', xp: 100 },
-  { id:  4, title: 'The 50/30/20 Rule',     desc: 'The single most practical budgeting framework ever devised.',                  icon: '📊', chapter: 2, status: 'completed', xp: 100 },
-  { id:  5, title: 'Tracking Expenses',     desc: "You can't improve what you don't measure. Here's how.",                       icon: '📝', chapter: 2, status: 'active',    xp: 120 },
-  { id:  6, title: 'Emergency Funds',       desc: 'Three to six months of expenses between you and financial disaster.',          icon: '🛡️', chapter: 2, status: 'locked',   xp: 150 },
-  { id:  7, title: 'Compound Interest',     desc: 'The eighth wonder of the world — and why starting early is everything.',      icon: '🌱', chapter: 3, status: 'locked',    xp: 150 },
-  { id:  8, title: 'High-Yield Savings',    desc: 'Why a 4.5% savings account beats a 1.5% one by 3× over 10 years.',           icon: '📈', chapter: 3, status: 'locked',    xp: 175 },
-  { id:  9, title: 'Savings Goals',         desc: 'Short-term, medium-term, long-term — buckets that make saving automatic.',    icon: '🎯', chapter: 3, status: 'locked',    xp: 200 },
-  { id: 10, title: 'Stock Market Basics',   desc: 'Shares, dividends, P/E ratios — demystified in plain language.',              icon: '📉', chapter: 4, status: 'locked',    xp: 200 },
-  { id: 11, title: 'Index Funds & ETFs',    desc: 'Why Warren Buffett told his wife to put 90% in an S&P 500 index fund.',      icon: '🗂️', chapter: 4, status: 'locked',   xp: 225 },
-  { id: 12, title: 'Risk & Diversification',desc: "Don't put all your eggs in one basket — the math behind spreading risk.",    icon: '⚖️', chapter: 4, status: 'locked',    xp: 250 },
-  { id: 13, title: 'Tax Optimisation',      desc: 'Legal ways to keep more of what you earn — every year, forever.',            icon: '📋', chapter: 5, status: 'locked',    xp: 250 },
-  { id: 14, title: 'Real Estate Basics',    desc: 'Buy vs rent, leverage, rental yield — what the numbers actually show.',      icon: '🏠', chapter: 5, status: 'locked',    xp: 275 },
-  { id: 15, title: 'Financial Freedom',     desc: 'The FIRE number, passive income, and designing a life without money stress.', icon: '🏆', chapter: 5, status: 'locked',    xp: 300 },
-]
-
-const LESSONS: Record<number, LessonDef> = {
-  1: {
-    mascotType: 'professor',
-    introQuote: "Money is just a shared illusion — and I'm about to prove it! 🎩",
-    slides: [
-      {
-        headline: 'From Barter to Bitcoin',
-        emoji: '⚖️',
-        color: '#FFCD00',
-        body: 'Before money existed, people bartered — trading fish for grain, labour for shelter. But barter has a fatal flaw: you need a "double coincidence of wants."\n\nOver centuries we invented commodity money (gold, silver), then representative money (paper backed by gold), then fiat currency (backed by government trust). Today, cryptocurrencies like Bitcoin are the latest chapter — digital scarcity enforced by mathematics instead of a central bank.',
-      },
-      {
-        headline: 'The 3 Functions of Money',
-        emoji: '🔑',
-        color: '#FF7B25',
-        body: 'Every form of money that has ever worked fulfils exactly three roles:\n\n1. Medium of Exchange — accepted as payment for goods and services.\n2. Store of Value — holds its worth over time (gold holds better than milk).\n3. Unit of Account — a common measuring stick so we can compare the price of a car to the price of a sandwich.\n\nBitcoin fans argue it nails #1 and #2 but struggles with #3 because its price is too volatile. The debate continues!',
-      },
-    ],
-    game: {
-      title: 'Money Fundamentals',
-      questions: [
-        {
-          q: 'Which of the following is NOT one of the three functions of money?',
-          choices: ['Medium of Exchange', 'Store of Value', 'Unit of Account', 'Source of Happiness'],
-          correct: 3,
-          explanation: 'The three functions are Medium of Exchange, Store of Value, and Unit of Account. Happiness is a side-effect — not guaranteed!',
-        },
-        {
-          q: 'What backs modern fiat currencies like the US dollar or Euro?',
-          choices: ['Gold reserves', 'Silver reserves', 'Government trust and law', 'Oil reserves'],
-          correct: 2,
-          explanation: 'Since the US left the gold standard in 1971, fiat currencies are backed purely by government authority and public trust — not any physical commodity.',
-        },
-        {
-          q: 'In which year was the Bitcoin whitepaper published?',
-          choices: ['2004', '2006', '2008', '2011'],
-          correct: 2,
-          explanation: 'Satoshi Nakamoto published the Bitcoin whitepaper in October 2008, right in the middle of the global financial crisis — perhaps not a coincidence.',
-        },
-      ],
-    },
-  },
-
-  2: {
-    mascotType: 'professor',
-    introQuote: "Banks' greatest trick? Convincing you they're saving your money… when they're lending it out! 🪄",
-    slides: [
-      {
-        headline: 'Debit: Your Money, Instantly',
-        emoji: '💳',
-        color: '#1565C0',
-        body: "A debit card draws directly from your bank account the moment you swipe. There's no borrowing — if you have €200 in your account and spend €201, the transaction is declined.\n\nAdvantages: you can't overspend, no interest charges, no debt risk.\nDisadvantage: weaker fraud protection. If a fraudster drains your account, it's your real money that disappears while you wait for the bank to investigate.",
-      },
-      {
-        headline: 'Credit: Borrowed Power (with a catch)',
-        emoji: '🏦',
-        color: '#E63946',
-        body: "A credit card lets you borrow from the issuer up to a set limit. Pay the full balance before the due date and you pay zero interest — you've effectively had an interest-free loan for up to 56 days.\n\nMiss the deadline? Average EU credit card APR is around 20–25%. On a €500 balance at 24% APR, that's €120 in interest after just one year.\n\nCredit cards offer superior fraud protection because it's the bank's money at risk, not yours.",
-      },
-    ],
-    game: {
-      title: 'Debit vs Credit',
-      questions: [
-        {
-          q: 'Which card type immediately deducts money from your bank account?',
-          choices: ['Credit card', 'Debit card', 'Charge card', 'Prepaid card'],
-          correct: 1,
-          explanation: 'A debit card draws directly from your balance in real time. Credit cards create a temporary loan that you repay later.',
-        },
-        {
-          q: 'At 24% APR, how much interest would you pay on a €500 balance left unpaid for one year?',
-          choices: ['€60', '€100', '€120', '€240'],
-          correct: 2,
-          explanation: '24% of €500 = €120. This is why paying your credit card in full each month is one of the most impactful financial habits you can build.',
-        },
-        {
-          q: 'For online shopping fraud protection, which is generally better?',
-          choices: ['Debit card', 'Cash', 'Credit card', 'Bank transfer'],
-          correct: 2,
-          explanation: "Credit cards offer stronger fraud protection because it's the bank's money at risk. Most issuers have zero-liability policies for unauthorised transactions.",
-        },
-      ],
-    },
-  },
-
-  3: {
-    mascotType: 'piggy',
-    introQuote: 'You deposit €1,000… and I immediately lend €900 of it to someone else. Wild, right? 🐷',
-    slides: [
-      {
-        headline: 'The Bank Business Model',
-        emoji: '🏛️',
-        color: '#1565C0',
-        body: "Banks make money on the spread between what they pay depositors and what they charge borrowers.\n\nIn practice: they might pay you 2% on your savings, then lend that money out as a personal loan at 15%. The 13% difference is their profit margin — called the net interest margin.\n\nThat's why banks build gleaming headquarters and sponsor football stadiums. The math works overwhelmingly in their favour.",
-      },
-      {
-        headline: 'Fractional Reserve Banking',
-        emoji: '🔢',
-        color: '#7B2D8B',
-        body: "Banks don't keep all your deposits in a vault. Under fractional reserve banking, they're only required to keep a fraction as reserves and can lend out the rest.\n\nWith a 10% reserve requirement: you deposit €1,000 → bank keeps €100, lends €900. That borrower deposits €900 in another bank → keeps €90, lends €810. And so on.\n\nThis process can theoretically expand the initial €1,000 into up to €10,000 of total deposits in the banking system. It's called the money multiplier effect — and it's how money is literally created.",
-      },
-    ],
-    game: {
-      title: 'How Banks Work',
-      questions: [
-        {
-          q: "A bank pays 2% on savings and charges 15% on loans. What's the net interest margin?",
-          choices: ['2%', '13%', '15%', '17%'],
-          correct: 1,
-          explanation: 'Net interest margin = lending rate − deposit rate = 15% − 2% = 13%. This spread is the core of how retail banks generate profit.',
-        },
-        {
-          q: 'With a 10% reserve requirement, how much can a bank lend out of €1,000 in deposits?',
-          choices: ['€100', '€500', '€900', '€1,000'],
-          correct: 2,
-          explanation: 'With a 10% reserve ratio, the bank keeps €100 (10%) and can lend the remaining €900. The reserve is the safety buffer against sudden withdrawals.',
-        },
-        {
-          q: 'In the EU, how much of your bank deposits are guaranteed per account if a bank fails?',
-          choices: ['€10,000', '€50,000', '€75,000', '€100,000'],
-          correct: 3,
-          explanation: 'EU deposit guarantee schemes protect up to €100,000 per depositor per bank. Amounts above this are at risk if the bank goes insolvent.',
-        },
-      ],
-    },
-  },
-
-  4: {
-    mascotType: 'piggy',
-    introQuote: 'One rule. That is ALL you need to budget like a professional. Let me show you! 📊',
-    slides: [
-      {
-        headline: 'The 50/30/20 Split',
-        emoji: '🥧',
-        color: '#2D9A4E',
-        body: "Elizabeth Warren popularised this elegant framework in her book 'All Your Worth.' Every euro of take-home pay gets assigned to one of three buckets:\n\n• 50% → Needs: rent, groceries, utilities, transport, insurance — essentials you'd struggle without.\n• 30% → Wants: restaurants, streaming services, holidays, hobbies — the things that make life enjoyable.\n• 20% → Financial goals: emergency fund, debt repayment, savings, investments.\n\nThe beauty: it's flexible enough for any income level and simple enough to actually stick to.",
-      },
-      {
-        headline: 'Needs vs Wants: The Honest Test',
-        emoji: '🤔',
-        color: '#FF7B25',
-        body: "The hardest part of the 50/30/20 rule is classifying honestly. Ask yourself: 'Would my life be materially harmed without this for 30 days?'\n\nNeeds: basic groceries (not restaurant meals), minimum rent payment, necessary transport, minimum debt payments, basic phone plan.\n\nWants: coffee shop visits, premium subscriptions, gym membership (often), new clothes beyond basics, dining out.\n\nWhen your 'needs' bucket overflows 50%, look for ways to reduce fixed costs — moving to a cheaper flat, switching utility providers — rather than stealing from your savings.",
-      },
-    ],
-    game: {
-      title: 'The 50/30/20 Rule',
-      questions: [
-        {
-          q: "If your take-home pay is €4,000/month, how much should go to 'Needs' under the 50/30/20 rule?",
-          choices: ['€800', '€1,200', '€2,000', '€2,400'],
-          correct: 2,
-          explanation: "50% of €4,000 = €2,000 for needs. This covers rent, groceries, utilities, minimum debt payments, and other essentials.",
-        },
-        {
-          q: 'Under the 50/30/20 rule, which category does a Netflix subscription fall under?',
-          choices: ['Needs (50%)', 'Wants (30%)', 'Financial Goals (20%)', 'It depends'],
-          correct: 1,
-          explanation: 'Netflix is a Want — enjoyable but not essential. You could live without it. Classifying entertainment as needs is a common trap that derails budgets.',
-        },
-        {
-          q: 'The 20% "Financial Goals" bucket is intended to cover:',
-          choices: ['Only retirement savings', 'Only emergency funds', 'Only debt repayment', 'Savings, debt repayment, and investing'],
-          correct: 3,
-          explanation: 'The 20% covers all wealth-building activities: building your emergency fund, paying down high-interest debt, and investing for long-term goals.',
-        },
-      ],
-    },
-  },
-
-  5: {
-    mascotType: 'wizard',
-    introQuote: "You can't improve what you can't see. I'll make your money visible! ✨",
-    slides: [
-      {
-        headline: 'The Tracking Illusion',
-        emoji: '🧐',
-        color: '#7B2D8B',
-        body: "Studies consistently show that people underestimate their actual spending by 30–40%. That morning coffee habit? You think it costs €15/month. Tracked properly, it's often €60–90.\n\nThis isn't a moral failing — it's how human memory works. We remember the big, intentional purchases and forget the dozens of small, habitual ones.\n\nTracking forces the truth into daylight. Within two weeks of honest tracking, most people identify at least one spending category they want to change — not because someone told them to, but because they genuinely surprised themselves.",
-      },
-      {
-        headline: 'The 3 Expense Types',
-        emoji: '📂',
-        color: '#1565C0',
-        body: "Categorise every expense into one of three types:\n\n• Fixed: Same amount, same time every month. Rent, loan repayments, insurance premiums. These are hardest to reduce but most impactful when you do.\n\n• Variable Necessities: Fluctuating but essential. Groceries, electricity, petrol. Reduce through habits and switching providers.\n\n• Discretionary: Optional spending driven by choice. Coffee, eating out, subscriptions, entertainment. Highest reduction potential with least lifestyle impact.\n\nOnce you see each category clearly, you can make targeted cuts without feeling like you're depriving yourself.",
-      },
-    ],
-    game: {
-      title: 'Tracking Expenses',
-      questions: [
-        {
-          q: 'Your mortgage repayment is €900 every month without variation. This is which type of expense?',
-          choices: ['Variable necessity', 'Discretionary', 'Fixed', 'Investment'],
-          correct: 2,
-          explanation: 'Fixed expenses are the same amount at the same time every period. Mortgage repayments, insurance, and loan payments are classic examples.',
-        },
-        {
-          q: "You track your coffee spending and discover you're spending €180/month. After review you decide €60 is reasonable. What have you created?",
-          choices: ['An investment goal', 'A savings account', 'A spending budget for that category', 'A debt repayment plan'],
-          correct: 2,
-          explanation: "You've set a category budget — a cap on discretionary spending. This is the core action that turns tracking into improvement.",
-        },
-        {
-          q: "For accurate expense tracking, when should you log a purchase?",
-          choices: ['At the end of the month', 'Once a week', 'In real-time or same day', 'Whenever you remember'],
-          correct: 2,
-          explanation: 'Memory fades fast. Same-day logging captures expenses before they disappear from your mental record. Apps that auto-import bank transactions make this effortless.',
-        },
-      ],
-    },
-  },
-}
 
 // ─── SVG layout ───────────────────────────────────────────────
 
@@ -1056,9 +805,9 @@ function PhaseIndicator({ current, chapter }: { current: ModalPhase; chapter: Ch
 // ─── Lesson Modal ─────────────────────────────────────────────
 
 function LessonModal({
-  node, chapter, onClose, isMobile, userId, onCompleted,
+  node, chapter, lesson, onClose, isMobile, userId, onCompleted,
 }: {
-  node: PathNodeData; chapter: Chapter; onClose: () => void; isMobile: boolean
+  node: PathNodeData; chapter: Chapter; lesson: LessonDef; onClose: () => void; isMobile: boolean
   userId?: string | null; onCompleted?: (nodeId: number) => void
 }) {
   const [phase,      setPhase]      = useState<ModalPhase>('intro')
@@ -1066,8 +815,6 @@ function LessonModal({
   const [gameKey,    setGameKey]    = useState(0)
 
   useEffect(() => { preload(); play('modal-open') }, [])
-
-  const lesson = LESSONS[node.id]
 
   function handleComplete(score: number) {
     setFinalScore(score)
@@ -1435,11 +1182,11 @@ function DetailCard({
 
 // ─── Progress Header ──────────────────────────────────────────
 
-function ProgressHeader({ nodes }: { nodes: PathNodeData[] }) {
+function ProgressHeader({ nodes, chapters, pageTitle }: { nodes: PathNodeData[]; chapters: Chapter[]; pageTitle: string }) {
   const done    = nodes.filter(n => n.status === 'completed').length
   const totalXP = nodes.filter(n => n.status === 'completed').reduce((s, n) => s + n.xp, 0)
   const pct     = Math.round((done / nodes.length) * 100)
-  const chapter = CHAPTERS[Math.floor(done / 3)]
+  const chapter = chapters[Math.floor(done / 3)]
 
   return (
     <div style={{
@@ -1448,7 +1195,7 @@ function ProgressHeader({ nodes }: { nodes: PathNodeData[] }) {
       display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap',
     }}>
       <div style={{ flex: 1, minWidth: '200px' }}>
-        <h1 className="text-4xl font-bold" style={{ marginBottom: '4px' }}>Learning Path</h1>
+        <h1 className="text-4xl font-bold" style={{ marginBottom: '4px' }}>{pageTitle}</h1>
         <p style={{
           fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,
           fontSize: '0.8rem', opacity: 0.55, margin: 0,
@@ -1459,7 +1206,7 @@ function ProgressHeader({ nodes }: { nodes: PathNodeData[] }) {
 
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
         {[
-          { label: 'Completed', value: `${done}/${NODES.length}`, accent: '#2D9A4E' },
+          { label: 'Completed', value: `${done}/${nodes.length}`, accent: '#2D9A4E' },
           { label: 'Total XP',  value: `${totalXP}`,              accent: '#FFCD00' },
           { label: 'Progress',  value: `${pct}%`,                 accent: '#1565C0' },
         ].map(s => (
@@ -1506,6 +1253,10 @@ function ProgressHeader({ nodes }: { nodes: PathNodeData[] }) {
 
 export default function Path() {
   const isMobile = useIsMobile()
+  const { theme } = useOrg()
+  const content = React.useMemo(() => getPathContent(theme), [theme])
+  const { chapters, nodes, lessons, pageTitle } = content
+
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set())
   const [userId,       setUserId]       = useState<string | null>(null)
   const [selectedId,   setSelectedId]   = useState<number>(5)
@@ -1520,12 +1271,12 @@ export default function Path() {
         const ids = new Set(items.map(item => parseInt(item.node_id)))
         setCompletedIds(ids)
         // Select the first non-completed node as active
-        for (let i = 1; i <= 15; i++) {
+        for (let i = 1; i <= nodes.length; i++) {
           if (!ids.has(i)) { setSelectedId(i); break }
         }
       })
       .catch(() => {})
-  }, [])
+  }, [nodes.length])
 
   function nodeStatus(id: number): Status {
     if (completedIds.has(id)) return 'completed'
@@ -1533,20 +1284,20 @@ export default function Path() {
     return 'locked'
   }
 
-  const dynamicNodes: PathNodeData[] = NODES.map(n => ({ ...n, status: nodeStatus(n.id) }))
+  const dynamicNodes: PathNodeData[] = nodes.map(n => ({ ...n, status: nodeStatus(n.id) }))
 
   function handleNodeCompleted(nodeId: number) {
     setCompletedIds(prev => new Set([...prev, nodeId]))
   }
 
-  const selected = dynamicNodes.find(n => n.id === selectedId) ?? dynamicNodes[4]
-  const selectedChapter = CHAPTERS.find(c => c.id === selected.chapter)!
-  const chapterFirstIdx = CHAPTERS.map(ch => NODES.findIndex(n => n.chapter === ch.id))
+  const selected = dynamicNodes.find(n => n.id === selectedId) ?? dynamicNodes[4] ?? dynamicNodes[0]
+  const selectedChapter = chapters.find(c => c.id === selected.chapter)!
+  const chapterFirstIdx = chapters.map(ch => nodes.findIndex(n => n.chapter === ch.id))
   const progressPath = computeProgressPath(completedIds.size)
 
   return (
     <div style={{ minHeight: '100vh', background: surface }}>
-      <ProgressHeader nodes={dynamicNodes} />
+      <ProgressHeader nodes={dynamicNodes} chapters={chapters} pageTitle={pageTitle} />
 
       {/* Scrollable path area */}
       <div style={{
@@ -1633,7 +1384,7 @@ export default function Path() {
                   <text x={isRight ? 605 : 35} y={y + 14} textAnchor="middle"
                     fontFamily="'Fredoka One',cursive" fontSize="9"
                     fill="color-mix(in srgb, var(--rh-ink) 35%, transparent)">
-                    {CHAPTERS[i].icon} {CHAPTERS[i + 1]?.icon ?? ''}
+                    {chapters[i]?.icon} {chapters[i + 1]?.icon ?? ''}
                   </text>
                 </g>
               )
@@ -1641,7 +1392,7 @@ export default function Path() {
           </svg>
 
           {/* Chapter labels */}
-          {CHAPTERS.map((ch, i) => (
+          {chapters.map((ch, i) => (
             <ChapterLabel key={ch.id} chapter={ch} pos={POSITIONS[chapterFirstIdx[i]]} />
           ))}
 
@@ -1663,10 +1414,11 @@ export default function Path() {
       <DetailCard node={selected} chapter={selectedChapter} onOpenLesson={setModalNode} />
 
       {/* Modal */}
-      {modalNode && (
+      {modalNode && lessons[modalNode.id] && (
         <LessonModal
           node={modalNode}
-          chapter={CHAPTERS.find(c => c.id === modalNode.chapter)!}
+          chapter={chapters.find(c => c.id === modalNode.chapter)!}
+          lesson={lessons[modalNode.id]}
           onClose={() => setModalNode(null)}
           isMobile={isMobile}
           userId={userId}

@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { getUser } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useIsMobile } from '../lib/responsive'
+import { useOrg } from '../contexts/OrgContext'
+import { getHomeContent, type HomeContent, type GameModeCompact } from '../data/homeContent'
 
 const FLIP_MS   = 700
 const ink    = 'var(--rh-ink)'
@@ -14,31 +16,12 @@ const TODAY = new Date().toLocaleDateString('en-US', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
 })
 
-const TICKER_ITEMS = [
-  '★ COMPOUND INTEREST: The secret banks hope you never discover',
-  '★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',
-  '★ DAILY CHALLENGE UNLOCKED: Today\'s financial puzzle is now live',
-  '★ PKO EXCLUSIVE: New savings rates — are you getting yours?',
-  '★ STREAK ALERT: 847 players maintained a 7-day streak this week',
-]
-
 const DEFAULT_PLAYER = { name: 'You', level: 1, xp: 0, xpMax: 500, streak: 0,
   badges: [] as string[], avatar: '🎩' }
 
-const GAME_MODES_DATA = [
-  { tag: 'QUICK ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Are You Smarter Than Your Bank Manager?',            body: 'Five rapid-fire questions. Thirty seconds each. Your financial IQ is about to be revealed.',             emoji: '🎯', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
-  { tag: 'DECISION ROOM', kicker: 'EXCLUSIVE SCENARIO',  headline: 'Young Investor Faces Impossible Choice',             body: 'One scenario. Multiple paths. Real consequences. Enter the Decision Room and choose wisely.',          emoji: '🎲', accent: '#E63946', cta: 'Enter Room →',    href: '/decision' },
-  { tag: 'CARTOON EPISODE', kicker: 'STORY-BASED LEARNING', headline: "Can You Survive the Financial Jungle Without Going Broke?", body: "Choose your character. Face real-life money dilemmas. Every choice matters — and your wallet feels it.", emoji: '🎬', accent: '#FF7B25', cta: 'Watch Episode →', href: '/episode' },
-]
-
 // ─── Spread content for pages 2 & 3 ──────────────────────────
 
-function PageGameModes() {
-  const modes = [
-    { tag: 'QUICK ROUNDS', kicker: 'KNOWLEDGE TEST', headline: 'Are You Smarter Than Your Bank Manager?', emoji: '🎯', accent: '#FFCD00', xp: '+80 XP', href: '/quiz' },
-    { tag: 'DECISION ROOM', kicker: 'SCENARIO', headline: 'Young Investor Faces Choice That Could Change Everything', emoji: '🎲', accent: '#E63946', xp: '+150 XP', href: '/decision' },
-    { tag: 'CARTOON EPISODE', kicker: 'STORY GAME', headline: 'Can You Survive the Financial Jungle Without Going Broke?', emoji: '🎬', accent: '#FF7B25', xp: '+200 XP', href: '/episode' },
-  ]
+function PageGameModes({ modes }: { modes: GameModeCompact[] }) {
   return (
     <div style={{ padding: '16px' }}>
       {modes.map((m, i) => (
@@ -61,7 +44,8 @@ function PageGameModes() {
   )
 }
 
-function PageStreak({ streak }: { streak: number }) {
+function PageStreak({ streak, content }: { streak: number; content: HomeContent['streak'] }) {
+  const body = content.bodyTemplate.replace('{streak}', String(streak))
   return (
     <div style={{ padding: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -69,17 +53,18 @@ function PageStreak({ streak }: { streak: number }) {
       </div>
       <h3 style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.1rem', lineHeight: 1.2, marginBottom: '8px', display: 'flex', gap: '7px' }}>
         <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>🔥</span>
-        <span>The 30-Day Challenge That Changed One Investor's Life</span>
+        <span>{content.headline}</span>
       </h3>
       <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.8rem', lineHeight: 1.55, opacity: 0.72, marginBottom: '14px' }}>
-        One challenge per day keeps financial ignorance at bay. Your {streak}-day streak is on the line.
+        {body}
       </p>
       <FlipBtn accent="#FF7B25" href="#">Claim Today's Reward →</FlipBtn>
       <Rule />
-      <Panel title="Today's Tip">
-        <div style={{ padding: '10px 12px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.78rem', lineHeight: 1.55 }}>
-          🎓 <strong>The 1% Rule:</strong> Improving your financial knowledge by just 1% per day compounds into a 37× improvement over a year.
-        </div>
+      <Panel title={content.tipTitle}>
+        <div
+          style={{ padding: '10px 12px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.78rem', lineHeight: 1.55 }}
+          dangerouslySetInnerHTML={{ __html: content.tipHtml }}
+        />
       </Panel>
     </div>
   )
@@ -123,21 +108,21 @@ function PageAchievements() {
   )
 }
 
-function PageBackCover() {
+function PageBackCover({ content }: { content: HomeContent['backCover'] }) {
   return (
     <div style={{ padding: '20px', textAlign: 'center' }}>
-      <div style={{ fontSize: '4rem', marginBottom: '10px' }} className="rh-animate-float">🎩</div>
+      <div style={{ fontSize: '4rem', marginBottom: '10px' }} className="rh-animate-float">{content.emoji}</div>
       <h3 style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.5rem', lineHeight: 1.1, marginBottom: '10px' }}>
-        Ready to Become a Financial Genius?
+        {content.headline}
       </h3>
       <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.85rem', lineHeight: 1.65, opacity: 0.75, marginBottom: '20px' }}>
-        The XP Gazette isn't just a newspaper — it's your daily training ground for financial mastery. Play. Learn. Level up.
+        {content.body}
       </p>
-      <FlipBtn accent="#FFCD00" href="/quiz">Start Playing Now →</FlipBtn>
+      <FlipBtn accent="#FFCD00" href={content.ctaHref}>{content.cta}</FlipBtn>
       <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: `1.5px solid ${ink}` }}>
         <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.72rem', opacity: 0.45, fontStyle: 'italic' }}>
-          Powered by PKO Bank Polski<br />
-          "Your financial future, gamified."
+          {content.poweredBy}<br />
+          {content.tagline}
         </p>
       </div>
     </div>
@@ -146,7 +131,8 @@ function PageBackCover() {
 
 // ─── Old homepage body (spread 0) ────────────────────────────
 
-function OldHomepageBody({ player }: { player: typeof DEFAULT_PLAYER }) {
+function OldHomepageBody({ player, content }: { player: typeof DEFAULT_PLAYER; content: HomeContent }) {
+  const { hero, gameModesFull, forecast } = content
   return (
     <div>
       {/* Row 1: Hero + Sidebar */}
@@ -160,23 +146,23 @@ function OldHomepageBody({ player }: { player: typeof DEFAULT_PLAYER }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
             <span style={{ background: '#E63946', color: '#FEF9EE', fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.12em', padding: '2px 10px', borderRadius: '9999px', border: `2px solid ${ink}`, boxShadow: `2px 2px 0 ${ink}` }}>EXCLUSIVE</span>
-            <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.55 }}>Today's Feature Story</span>
+            <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.55 }}>{hero.eyebrow}</span>
           </div>
           <h2 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(1.6rem, 2.8vw, 2.4rem)', lineHeight: 1.1, marginBottom: '14px' }}>
-            Compound Interest: The Villain Banks Hope You Never Discover
+            {hero.headline}
           </h2>
           <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
             <div style={{ flex: 1 }}>
               <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.88rem', lineHeight: 1.65, opacity: 0.8, marginBottom: '16px' }}>
-                <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '3rem', lineHeight: 0.75, float: 'left', marginRight: '6px', marginTop: '4px' }}>I</span>
-                n a shocking exposé rocking the financial world, local experts confirmed what savvy investors long suspected: compound interest, when working <em>for</em> you, is the closest thing to a legal money-printing machine. When working <em>against</em> you, however…
+                <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '3rem', lineHeight: 0.75, float: 'left', marginRight: '6px', marginTop: '4px' }}>{hero.dropCapLetter}</span>
+                <span dangerouslySetInnerHTML={{ __html: hero.dropCapRest }} />
               </p>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <FlipBtn accent="#FFCD00" href="/quiz">Read Full Story →</FlipBtn>
-                <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.72rem', opacity: 0.55 }}>5 min read · +120 XP</span>
+                <FlipBtn accent="#FFCD00" href={hero.ctaHref}>{hero.ctaLabel}</FlipBtn>
+                <span style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.72rem', opacity: 0.55 }}>{hero.meta}</span>
               </div>
             </div>
-            <div style={{ width: '120px', height: '120px', borderRadius: '50% 46% 50% 48%', border: `3px solid ${ink}`, background: '#FEF3C7', boxShadow: `4px 4px 0 ${ink}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.5rem', flexShrink: 0 }} className="rh-animate-float">🪙</div>
+            <div style={{ width: '120px', height: '120px', borderRadius: '50% 46% 50% 48%', border: `3px solid ${ink}`, background: '#FEF3C7', boxShadow: `4px 4px 0 ${ink}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.5rem', flexShrink: 0 }} className="rh-animate-float">{hero.emoji}</div>
           </div>
         </div>
 
@@ -215,17 +201,18 @@ function OldHomepageBody({ player }: { player: typeof DEFAULT_PLAYER }) {
             </div>
           </div>
           <div style={{ border: `2px solid ${ink}`, borderRadius: '1rem 1.2rem 1rem 1.1rem', padding: '10px 14px', background: surface, boxShadow: `3px 3px 0 ${ink}` }}>
-            <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.55, marginBottom: '5px' }}>Financial Forecast</div>
-            <div style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.76rem', lineHeight: 1.5 }}>
-              ☀️ Sunny with a chance of <strong>compound gains</strong>. Umbrella advised for unsecured loans.
-            </div>
+            <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.55, marginBottom: '5px' }}>{forecast.label}</div>
+            <div
+              style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.76rem', lineHeight: 1.5 }}
+              dangerouslySetInnerHTML={{ __html: forecast.body }}
+            />
           </div>
         </div>
       </div>
 
       {/* Row 2: Three game modes */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: `2px solid ${ink}` }}>
-        {GAME_MODES_DATA.map((m, i) => (
+        {gameModesFull.map((m, i) => (
           <div key={m.tag} style={{ padding: '18px', borderRight: i < 2 ? `2px solid ${ink}` : 'none', cursor: 'pointer', transition: 'background 0.12s' }}
           onMouseEnter={e => (e.currentTarget.style.background = surface)}
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -278,6 +265,9 @@ type Spread = {
 
 export default function Home() {
   const isMobile = useIsMobile()
+  const { activeOrgId, theme } = useOrg()
+  const content = useMemo(() => getHomeContent(activeOrgId, theme), [activeOrgId, theme])
+  const { mastheadSubtitle, sectionNav, ticker, spreads, gameModesFull } = content
   const [player,    setPlayer]    = useState(DEFAULT_PLAYER)
   const [idx,       setIdx]       = useState(0)
   const [flipping,  setFlipping]  = useState(false)
@@ -311,25 +301,16 @@ export default function Home() {
   }, [session?.id])
 
   const SPREADS: Spread[] = [
+    { ...spreads[0], isFullPage: true },
     {
-      label:      'Front Page',
-      headline:   'Compound Interest Scandal Rocks The Entire Banking World',
-      subhead:    'Local experts reveal the truth behind the most powerful force in all of finance',
-      isFullPage: true,
+      ...spreads[1],
+      left:  <PageStreak streak={player.streak} content={content.streak} />,
+      right: <PageGameModes modes={content.gameModesCompact} />,
     },
     {
-      label:    'Game Modes',
-      headline: 'Two New Challenges Added To The Gazette This Week',
-      subhead:  'Test your knowledge in Quick Rounds, or face moral dilemmas in the Decision Room',
-      left:     <PageStreak streak={player.streak} />,
-      right:    <PageGameModes />,
-    },
-    {
-      label:    'Achievements',
-      headline: 'Local Investor Earns Three Badges In A Single Session',
-      subhead:  'How consistent daily practice turned one beginner into a certified financial thinker',
-      left:     <PageAchievements />,
-      right:    <PageBackCover />,
+      ...spreads[2],
+      left:  <PageAchievements />,
+      right: <PageBackCover content={content.backCover} />,
     },
   ]
 
@@ -408,7 +389,7 @@ export default function Home() {
     if (idx === 0 && !flipping) {
       return (
         <div onClick={() => flip('fwd')} style={{ cursor: 'e-resize', height: '100%' }}>
-          <OldHomepageBody player={player} />
+          <OldHomepageBody player={player} content={content} />
         </div>
       )
     }
@@ -425,7 +406,7 @@ export default function Home() {
           {/* Leaf: full old homepage sweeps left */}
           <div style={leafAnim('left center')}>
             <div style={{ backfaceVisibility: 'hidden', background: paper, position: 'relative' }}>
-              <OldHomepageBody player={player} />
+              <OldHomepageBody player={player} content={content} />
               {shadeLeaf('left')}
               {spineHighlight('left')}
             </div>
@@ -444,7 +425,7 @@ export default function Home() {
         <div style={{ position: 'relative' }}>
           {/* Revealed: spread 0 full-page with cast shadow */}
           <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-            <OldHomepageBody player={player} />
+            <OldHomepageBody player={player} content={content} />
             {castShadow('right')}
           </div>
           {/* Leaf: current spread sweeps right */}
@@ -531,8 +512,8 @@ export default function Home() {
       <div style={{ minHeight: '100vh', background: surface, padding: '16px 16px 72px' }}>
         {/* Masthead */}
         <div style={{ textAlign: 'center', padding: '16px 12px', border: `3px solid ${ink}`, borderRadius: '1.2rem', background: paper, marginBottom: '12px' }}>
-          <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2rem,10vw,3.2rem)', lineHeight: 1, margin: '0 0 4px', letterSpacing: '-0.01em' }}>The XP Gazette</h1>
-          <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', opacity: 0.55, margin: 0 }}>"All The Financial News Fit To Play"</p>
+          <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2rem,10vw,3.2rem)', lineHeight: 1, margin: '0 0 4px', letterSpacing: '-0.01em' }}>Knowly</h1>
+          <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', opacity: 0.55, margin: 0 }}>{mastheadSubtitle}</p>
         </div>
 
         {/* Player card */}
@@ -556,7 +537,7 @@ export default function Home() {
         </div>
 
         {/* Game modes */}
-        {GAME_MODES_DATA.map(m => (
+        {gameModesFull.map(m => (
           <Link key={m.tag} to={m.href} style={{ display: 'block', textDecoration: 'none', color: ink, border: `2.5px solid ${ink}`, borderRadius: '1.2rem', boxShadow: `4px 4px 0 ${ink}`, overflow: 'hidden', marginBottom: '12px', background: paper }}>
             <div style={{ background: m.accent, borderBottom: `2px solid ${ink}`, padding: '6px 14px', fontFamily: "'Fredoka One', cursive", fontSize: '0.62rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#1A0800' }}>{m.tag}</div>
             <div style={{ padding: '14px', display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -574,7 +555,7 @@ export default function Home() {
           <div style={{ flexShrink: 0, height: '100%', display: 'flex', alignItems: 'center', padding: '0 10px', background: '#1A0800', color: '#FFCD00', fontFamily: "'Fredoka One', cursive", fontSize: '0.62rem', letterSpacing: '0.1em', borderRight: `3px solid ${ink}`, whiteSpace: 'nowrap' }}>BREAKING</div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <span style={{ display: 'inline-block', whiteSpace: 'nowrap', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.72rem', animation: 'ticker-scroll 55s linear infinite' }}>
-              {[...TICKER_ITEMS,...TICKER_ITEMS].join('   ·   ')}
+              {[...ticker, ...ticker].join('   ·   ')}
             </span>
           </div>
         </div>
@@ -620,16 +601,16 @@ export default function Home() {
           <div style={{ position: 'absolute', right: '28px', top: '50%', transform: 'translateY(-50%)', fontFamily: "'Fredoka One', cursive", fontSize: '1.1rem', opacity: 0.25, letterSpacing: '0.3em' }} className="rh-animate-float">✦ ✦ ✦</div>
           <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.35em', textTransform: 'uppercase', opacity: 0.5, marginBottom: '4px' }}>★ The Original · Est. 2026 ★</p>
           <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2.8rem, 8vw, 5.5rem)', lineHeight: 1, margin: 0, letterSpacing: '-0.01em', textShadow: `4px 4px 0 ${ink}, 6px 6px 0 color-mix(in srgb, ${ink} 20%, transparent)` }}>
-            The XP Gazette
+            Knowly
           </h1>
           <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.72rem', letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.55, marginTop: '8px', borderTop: `1px solid ${ink}`, borderBottom: `1px solid ${ink}`, padding: '4px 0', display: 'inline-block' }}>
-            "All The Financial News Fit To Play"
+            {mastheadSubtitle}
           </p>
         </div>
 
         {/* ── Section nav ───────────────────────────────────── */}
         <div style={{ borderBottom: `2px solid ${ink}`, display: 'flex', justifyContent: 'center' }}>
-          {['Savings','Budgeting','Investing','Loans','Challenges'].map((s,i,arr) => (
+          {sectionNav.map((s,i,arr) => (
             <button key={s} style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px 20px', borderRight: i < arr.length-1 ? `1.5px solid ${ink}` : 'none', background: 'transparent', cursor: 'pointer', transition: 'background 0.1s', opacity: 0.75 }}
               onMouseEnter={e=>(e.currentTarget.style.background=surface)} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{s}</button>
           ))}
@@ -682,7 +663,7 @@ export default function Home() {
         <div style={{ flexShrink: 0, height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', background: '#1A0800', color: '#FFCD00', fontFamily: "'Fredoka One', cursive", fontSize: '0.68rem', letterSpacing: '0.12em', borderRight: `3px solid ${ink}`, whiteSpace: 'nowrap' }}>BREAKING</div>
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <span style={{ display: 'inline-block', whiteSpace: 'nowrap', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.78rem', letterSpacing: '0.03em', animation: 'ticker-scroll 55s linear infinite' }}>
-            {[...TICKER_ITEMS,...TICKER_ITEMS].join('   ·   ')}
+            {[...ticker, ...ticker].join('   ·   ')}
           </span>
         </div>
       </div>

@@ -1,68 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { submitGame } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useIsMobile } from '../lib/responsive'
 import { play, preload } from '../lib/sounds'
-
-// ── Questions ─────────────────────────────────────────────────
-const QUESTIONS = [
-  {
-    question: "What is compound interest?",
-    options: [
-      "Interest paid only on the original principal",
-      "Interest calculated on principal AND accumulated interest",
-      "A fixed monthly fee charged by banks",
-      "Interest that decreases over time",
-    ],
-    correct: 1,
-    explanation: "Compound interest grows on itself — you earn interest on your interest, creating exponential growth over time.",
-    xp: 100,
-  },
-  {
-    question: "The 50/30/20 budgeting rule divides your income into:",
-    options: [
-      "50% savings, 30% needs, 20% wants",
-      "50% housing, 30% food, 20% transport",
-      "50% needs, 30% wants, 20% savings",
-      "50% investments, 30% needs, 20% fun",
-    ],
-    correct: 2,
-    explanation: "50% for needs (rent, food), 30% for wants (entertainment), 20% for savings and debt repayment.",
-    xp: 100,
-  },
-  {
-    question: "How many months of expenses should a basic emergency fund cover?",
-    options: ["1 month", "2 months", "3–6 months", "12+ months"],
-    correct: 2,
-    explanation: "Experts recommend 3–6 months of living expenses as a buffer against job loss or unexpected costs.",
-    xp: 100,
-  },
-  {
-    question: "What is the key difference between a debit and credit card?",
-    options: [
-      "Debit cards have higher spending limits",
-      "Credit cards use your own money; debit cards borrow",
-      "Debit cards draw from your account; credit cards borrow from the bank",
-      "There is no practical difference",
-    ],
-    correct: 2,
-    explanation: "A debit card spends money you already have. A credit card borrows money you must repay — often with interest.",
-    xp: 100,
-  },
-  {
-    question: "What does APR stand for in finance?",
-    options: [
-      "Annual Percentage Rate",
-      "Adjusted Payment Ratio",
-      "Average Profit Return",
-      "Allocated Principal Reserve",
-    ],
-    correct: 0,
-    explanation: "APR (Annual Percentage Rate) is the yearly cost of borrowing including fees. Higher APR = more expensive loan.",
-    xp: 100,
-  },
-]
+import { useOrg } from '../contexts/OrgContext'
+import { getQuizContent } from '../data/quizContent'
 
 const GRADES = [
   { min: 5, label: 'Financial Genius', emoji: '🌟', color: '#FFCD00' },
@@ -79,6 +22,9 @@ const ink = 'var(--rh-ink)'
 type Phase = 'intro' | 'playing' | 'answered' | 'results'
 
 export default function Quiz() {
+  const { theme } = useOrg()
+  const { questions: QUESTIONS, title: quizTitle, subtitle: quizSubtitle } = useMemo(() => getQuizContent(theme), [theme])
+
   const [phase, setPhase]         = useState<Phase>('intro')
   const [qIdx, setQIdx]           = useState(0)
   const [selected, setSelected]   = useState<number | null>(null)
@@ -183,7 +129,7 @@ export default function Quiz() {
         padding: '3px 14px', borderRadius: '9999px',
         border: `2px solid ${ink}`, boxShadow: `2px 2px 0 ${ink}`,
         marginBottom: '20px',
-      }}>Quick Rounds</span>
+      }}>{quizTitle}</span>
 
       <div style={{ fontSize: '5rem', marginBottom: '12px' }} className="rh-animate-float">🎯</div>
 
@@ -191,7 +137,7 @@ export default function Quiz() {
         fontFamily: "'Fredoka One', cursive",
         fontSize: 'clamp(2rem, 5vw, 3rem)',
         lineHeight: 1.05, marginBottom: '10px',
-      }}>The Financial Intelligence Test</h1>
+      }}>{quizSubtitle}</h1>
 
       <p style={{
         fontFamily: "'Fredoka Variable', sans-serif",
@@ -219,7 +165,7 @@ export default function Quiz() {
 
       <div style={{ marginTop: '16px' }}>
         <Link to="/" style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.75rem', opacity: 0.45, textDecoration: 'underline', color: 'var(--rh-ink)' }}>
-          ← Back to Gazette
+          ← Back to Knowly
         </Link>
       </div>
     </div>
@@ -281,7 +227,7 @@ export default function Quiz() {
       <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
         <Btn accent="#FFCD00" onClick={startQuiz}>Play Again</Btn>
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <Btn accent="var(--rh-surface)">← Back to Gazette</Btn>
+          <Btn accent="var(--rh-surface)">← Back to Knowly</Btn>
         </Link>
       </div>
     </div>

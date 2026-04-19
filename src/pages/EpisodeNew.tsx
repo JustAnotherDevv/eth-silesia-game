@@ -2372,8 +2372,15 @@ function CitySidescroller({ onBack }: { onBack: () => void }) {
   const dismissQuiz=useCallback(()=>{
     const gs=gsRef.current
     const enc=gs.encounter
-    gs.player.x=enc ? enc.x - 40 : gs.player.x - 100
-    gs.player.vx=-5;gs.phase='playing';gs.encounter=null;gs.encCooldown=120
+    const correct=enc&&gs.defeated.has(enc.id)
+    if(correct){
+      gs.player.x=enc.x+enc.w+10
+      gs.player.vx=0
+    } else if(enc){
+      gs.player.x=enc.x-40
+      gs.player.vx=-5
+    }
+    gs.phase='playing';gs.encounter=null;gs.encCooldown=120
     setQuizAnim(false);setPhase('playing');setEncounter(null);setChoiceResult(null)
   },[])
 

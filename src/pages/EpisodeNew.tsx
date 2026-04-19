@@ -2373,8 +2373,10 @@ function CitySidescroller({ onBack }: { onBack: () => void }) {
 
   const dismissQuiz=useCallback(()=>{
     const gs=gsRef.current
-    gs.player.x-=100;gs.player.vx=-5;gs.phase='playing';gs.encounter=null
-    setQuizAnim(false);setTimeout(()=>{setPhase('playing');setEncounter(null);setChoiceResult(null)},80)
+    const enc=gs.encounter
+    gs.player.x=enc ? enc.x - 40 : gs.player.x - 100
+    gs.player.vx=-5;gs.phase='playing';gs.encounter=null
+    setQuizAnim(false);setPhase('playing');setEncounter(null);setChoiceResult(null)
   },[])
 
   const touchKey=(dir:'left'|'right'|'up',v:boolean)=>{keysRef.current[dir]=v;if(v)setShowHint(false)}

@@ -2304,36 +2304,37 @@ function CitySidescroller({ onBack }: { onBack: () => void }) {
     const ctx=canvas.getContext('2d')!
     function tick(){
       const gs=gsRef.current, k=keysRef.current
-      if(gs.phase!=='playing'){rafRef.current=requestAnimationFrame(tick);return}
       gs.tick++
       const p=gs.player
-      if(k.left){p.vx=-W3_MOVE_SPD;p.facingRight=false}
-      else if(k.right){p.vx=W3_MOVE_SPD;p.facingRight=true}
-      else p.vx*=0.72
-      if(k.up&&p.onGround){p.vy=W3_JUMP_VEL;p.onGround=false;k.up=false}
-      p.vy=Math.min(p.vy+W3_GRAVITY,18); p.y+=p.vy; p.x+=p.vx
-      p.x=Math.max(10,Math.min(p.x,W3_WORLD_W-50))
-      p.onGround=false
-      if(p.y>=W3_GROUND_Y-W3_CHAR_H){p.y=W3_GROUND_Y-W3_CHAR_H;p.vy=0;p.onGround=true}
-      if(p.vy>=0){
-        for(const pl of W3_PLATFORMS){
-          if(p.x+28>pl.x&&p.x+4<pl.x+pl.w&&p.y+W3_CHAR_H>pl.y&&p.y+W3_CHAR_H<pl.y+pl.h+14){
-            p.y=pl.y-W3_CHAR_H;p.vy=0;p.onGround=true
+      if(gs.phase==='playing'){
+        if(k.left){p.vx=-W3_MOVE_SPD;p.facingRight=false}
+        else if(k.right){p.vx=W3_MOVE_SPD;p.facingRight=true}
+        else p.vx*=0.72
+        if(k.up&&p.onGround){p.vy=W3_JUMP_VEL;p.onGround=false;k.up=false}
+        p.vy=Math.min(p.vy+W3_GRAVITY,18); p.y+=p.vy; p.x+=p.vx
+        p.x=Math.max(10,Math.min(p.x,W3_WORLD_W-50))
+        p.onGround=false
+        if(p.y>=W3_GROUND_Y-W3_CHAR_H){p.y=W3_GROUND_Y-W3_CHAR_H;p.vy=0;p.onGround=true}
+        if(p.vy>=0){
+          for(const pl of W3_PLATFORMS){
+            if(p.x+28>pl.x&&p.x+4<pl.x+pl.w&&p.y+W3_CHAR_H>pl.y&&p.y+W3_CHAR_H<pl.y+pl.h+14){
+              p.y=pl.y-W3_CHAR_H;p.vy=0;p.onGround=true
+            }
           }
         }
-      }
-      if(Math.abs(p.vx)>0.4){if(++p.walkTick>=W3_WALK_TICKS){p.walkTick=0;p.walkFrame=(p.walkFrame+1)%6}}
-      if(p.invincible>0) p.invincible--
-      if(gs.encCooldown>0) gs.encCooldown--
-      const targetCam=Math.max(0,Math.min(p.x-W*0.38,W3_WORLD_W-W))
-      gs.camera+=(targetCam-gs.camera)*0.12
-      if(gs.encCooldown===0){
-        for(const enc of W3_ENCOUNTERS){
-          if(gs.defeated.has(enc.id)) continue
-          if(p.x+32>enc.x&&p.x<enc.x+enc.w&&p.y+W3_CHAR_H>enc.y){gs.phase='quiz';gs.encounter=enc;triggerQuiz(enc);return}
+        if(Math.abs(p.vx)>0.4){if(++p.walkTick>=W3_WALK_TICKS){p.walkTick=0;p.walkFrame=(p.walkFrame+1)%6}}
+        if(p.invincible>0) p.invincible--
+        if(gs.encCooldown>0) gs.encCooldown--
+        const targetCam=Math.max(0,Math.min(p.x-W*0.38,W3_WORLD_W-W))
+        gs.camera+=(targetCam-gs.camera)*0.12
+        if(gs.encCooldown===0){
+          for(const enc of W3_ENCOUNTERS){
+            if(gs.defeated.has(enc.id)) continue
+            if(p.x+32>enc.x&&p.x<enc.x+enc.w&&p.y+W3_CHAR_H>enc.y){gs.phase='quiz';gs.encounter=enc;triggerQuiz(enc)}
+          }
         }
+        if(p.x>=W3_WORLD_W-120&&gs.phase!=='win'){gs.phase='win';setPhase('win')}
       }
-      if(p.x>=W3_WORLD_W-120){gs.phase='win';setPhase('win');return}
       particlesRef.current=updateW3Particles(particlesRef.current)
       ctx.clearRect(0,0,W,H)
       drawW3Bg(ctx,gs.camera)

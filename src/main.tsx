@@ -21,6 +21,7 @@ import Episode from './pages/Episode'
 import EpisodeNew from './pages/EpisodeNew'
 import { Nav } from './components/Nav'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { OrgProvider } from './contexts/OrgContext'
 import { getSession } from './lib/session'
 
 const ink = 'var(--rh-ink)'
@@ -66,6 +67,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <OrgProvider>
         <Routes>
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/" element={<ProtectedRoute><Layout><Home /></Layout></ProtectedRoute>} />
@@ -84,6 +86,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/episode/:id?" element={<ProtectedRoute><Episode /></ProtectedRoute>} />
           <Route path="/episode-new" element={<ProtectedRoute><EpisodeNew /></ProtectedRoute>} />
         </Routes>
+        </OrgProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

@@ -262,7 +262,7 @@ export default function Swipe() {
 
       <div style={{ marginTop: '16px' }}>
         <Link to="/" style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.75rem', opacity: 0.45, textDecoration: 'underline', color: ink }}>
-          ← Back to Gazette
+          ← Back to Knowly
         </Link>
       </div>
     </div>

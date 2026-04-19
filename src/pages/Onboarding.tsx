@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getUser } from '../lib/api'
 import { setSession } from '../lib/session'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 
 const ink     = 'var(--rh-ink)'
@@ -16,6 +16,7 @@ const STEP_COLORS = ['#FFCD00', '#2D9A4E', '#1565C0', '#FF7B25', '#7B2D8B']
 const ORGS = [
   { id: 'ETH_SIL',   name: 'ETH Silesia',       type: 'Conference', color: '#7B2D8B', emoji: '⛓️',  members: 312  },
   { id: 'PKO_BANK',  name: 'PKO Bank',           type: 'Corporate',  color: '#1565C0', emoji: '🏦',  members: 1240 },
+  { id: 'ETH_LEGAL', name: 'ETHLegal',           type: 'Legal',      color: '#2D9A4E', emoji: '⚖️',  members: 184  },
   { id: 'WAW_UNI',   name: 'Warsaw University',  type: 'Education',  color: '#2D9A4E', emoji: '🎓',  members: 567  },
   { id: 'FINTECH',   name: 'FinTech Hub',         type: 'Startup',    color: '#FF7B25', emoji: '🚀',  members: 89   },
 ]
@@ -145,7 +146,7 @@ function Landing({ onLogin, onSignup }: { onLogin(): void; onSignup(): void }) {
         <ProfessorSVG />
       </div>
       <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.85rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#FFCD00', marginBottom: '6px', textShadow: `1px 1px 0 ${ink}` }}>Welcome to</p>
-      <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2.6rem, 8vw, 3.8rem)', lineHeight: 0.95, marginBottom: '16px', color: ink, textShadow: `4px 4px 0 #FFCD00, 7px 7px 0 ${ink}` }}>XP Gazette</h1>
+      <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2.6rem, 8vw, 3.8rem)', lineHeight: 0.95, marginBottom: '16px', color: ink, textShadow: `4px 4px 0 #FFCD00, 7px 7px 0 ${ink}` }}>Knowly</h1>
       <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500, fontSize: '0.97rem', lineHeight: 1.65, opacity: 0.6, maxWidth: '340px', margin: '0 auto 32px' }}>
         Level up your financial life, one lesson at a time.
       </p>
@@ -167,6 +168,7 @@ function Landing({ onLogin, onSignup }: { onLogin(): void; onSignup(): void }) {
 
 function LoginForm({ onBack }: { onBack(): void }) {
   const navigate = useNavigate()
+  const { refreshSession } = useAuth()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [loading,  setLoading]  = useState(false)
@@ -185,13 +187,20 @@ function LoginForm({ onBack }: { onBack(): void }) {
     setError('')
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
-      if (authError) { setError(authError.message); return }
-      const user = await getUser(data.user.id)
-      setSession({ id: user.id, username: user.username, displayName: user.display_name, avatar: user.avatar })
+      if (authError) { setError(authError.message); setLoading(false); return }
+
+      // Seed a minimal session so ProtectedRoute lets us through immediately.
+      // Don't call getUser here — it would call supabase.auth.getSession() which
+      // can deadlock against the auth mutex held by the SIGNED_IN listener that
+      // just fired. AuthContext's listener will load the full DB profile and
+      // overwrite this seed asynchronously.
+      const fallbackName = data.user.email?.split('@')[0] ?? 'user'
+      setSession({ id: data.user.id, username: fallbackName, displayName: fallbackName, avatar: '🎩' })
+      refreshSession()
+      setLoading(false)
       navigate('/')
     } catch {
       setError('Login failed. Check your email and password.')
-    } finally {
       setLoading(false)
     }
   }
@@ -243,7 +252,7 @@ function LoginForm({ onBack }: { onBack(): void }) {
 
 // ── Step 1: Welcome ───────────────────────────────────────────
 
-function Step1Welcome({ onNext }: { onNext(): void }) {
+function Step1Welcome({ onNext, onBack }: { onNext(): void; onBack(): void }) {
   return (
     <div style={{ textAlign: 'center', padding: '12px 0 32px' }}>
       <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
@@ -261,7 +270,7 @@ function Step1Welcome({ onNext }: { onNext(): void }) {
         lineHeight: 0.95, marginBottom: '16px',
         color: ink,
         textShadow: `4px 4px 0 #FFCD00, 7px 7px 0 ${ink}`,
-      }}>XP Gazette</h1>
+      }}>Knowly</h1>
       <p style={{
         fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 500,
         fontSize: '0.97rem', lineHeight: 1.65, opacity: 0.6,
@@ -282,6 +291,15 @@ function Step1Welcome({ onNext }: { onNext(): void }) {
         onMouseEnter={e => lift(e, '7px 7px 0')}
         onMouseLeave={e => unlift(e, '5px 5px 0')}
       >Get Started →</button>
+      <div style={{ marginTop: '20px' }}>
+        <button onClick={onBack} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,
+          fontSize: '0.85rem', color: ink, opacity: 0.5, textDecoration: 'underline',
+        }}>
+          Already have an account? Log In
+        </button>
+      </div>
     </div>
   )
 }
@@ -299,7 +317,7 @@ function Step2Identity({ name, username, avatarIdx, email, password, onChange, o
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  const passwordValid = password.length >= 6
+  const passwordValid = password.length >= 8
 
   useEffect(() => {
     const slug = username.toLowerCase().replace(/[^a-z0-9_]/g, '')
@@ -368,12 +386,12 @@ function Step2Identity({ name, username, avatarIdx, email, password, onChange, o
             value={password}
             onChange={e => onChange('password', e.target.value)}
             onBlur={() => setPasswordTouched(true)}
-            placeholder="min 6 characters"
+            placeholder="min 8 characters"
             type="password"
             style={{ ...inputStyle, borderColor: passwordTouched && !passwordValid ? '#D32F2F' : ink, boxShadow: passwordTouched && !passwordValid ? `3px 3px 0 #D32F2F` : `3px 3px 0 ${ink}` }}
           />
           {passwordTouched && !passwordValid && (
-            <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', color: '#D32F2F', margin: '4px 0 0 4px' }}>Must be at least 6 characters</p>
+            <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', color: '#D32F2F', margin: '4px 0 0 4px' }}>Must be at least 8 characters</p>
           )}
         </div>
 
@@ -865,10 +883,10 @@ function Step4Goals({ goals, onChange, onNext, onBack }: {
 
 // ── Step 5: Complete ──────────────────────────────────────────
 
-function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCommunityName, newCommunityEmoji, communityCode, email, password }: {
+function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCommunityName, newCommunityEmoji, communityCode, email, password, onBack }: {
   name: string; username: string; avatarIdx: number; orgId: string; goals: string[]
   isAdmin: boolean; newCommunityName: string; newCommunityEmoji: string; communityCode: string
-  email: string; password: string
+  email: string; password: string; onBack(): void
 }) {
   const navigate = useNavigate()
   const org      = ORGS.find(o => o.id === orgId)
@@ -876,8 +894,14 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
   const [status,  setStatus]  = React.useState<'loading' | 'success' | 'error'>('loading')
   const [authErr, setAuthErr] = React.useState('')
   const [retryKey, setRetryKey] = React.useState(0)
+  // Prevent StrictMode double-invoke: track which retryKey we've already fired for
+  const firedForKey = React.useRef(-1)
 
   React.useEffect(() => {
+    // StrictMode guard — only run once per retryKey even if effect fires twice
+    if (firedForKey.current === retryKey) return
+    firedForKey.current = retryKey
+
     let cancelled = false
 
     if (isAdmin) {
@@ -900,7 +924,6 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
         const data = await res.json()
         if (cancelled) return
 
-        // 409 = username/email already registered (StrictMode double-invoke in dev) — skip to sign-in
         if (!res.ok && res.status !== 409) {
           setAuthErr(data.error ?? 'Registration failed')
           setStatus('error')
@@ -911,7 +934,6 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
         if (cancelled) return
         if (signInError) { setAuthErr(signInError.message); setStatus('error'); return }
 
-        // Fetch fresh member data (handles both new registration and 409 re-run)
         const memberRes = await fetch(`/api/members/${username}`)
         if (cancelled) return
         const member = memberRes.ok ? await memberRes.json() : null
@@ -957,13 +979,19 @@ function Step5Complete({ name, username, avatarIdx, orgId, goals, isAdmin, newCo
         <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.4rem', marginBottom: '12px' }}>
           Registration Failed
         </div>
-        <div style={{ padding: '12px 16px', background: 'rgba(230,57,70,0.1)', border: '2px solid #E63946', borderRadius: '12px', marginBottom: '20px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.85rem', color: '#E63946' }}>
+        <div style={{ padding: '12px 16px', background: 'rgba(230,57,70,0.1)', border: '2px solid #E63946', borderRadius: '12px', marginBottom: '24px', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.85rem', color: '#E63946' }}>
           {authErr}
         </div>
-        <button onClick={() => { setStatus('loading'); setAuthErr(''); setRetryKey(k => k + 1) }} style={{ ...btnBase, fontSize: '0.95rem', padding: '14px 36px', background: '#FFCD00', color: '#1A0800', boxShadow: `4px 4px 0 ${ink}` }}
-          onMouseEnter={e => lift(e)} onMouseLeave={e => unlift(e)}>
-          ↩ Try Again
-        </button>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button onClick={onBack} style={{ ...btnBase, fontSize: '0.95rem', padding: '14px 28px', background: surface, color: ink, boxShadow: `4px 4px 0 ${ink}` }}
+            onMouseEnter={e => lift(e)} onMouseLeave={e => unlift(e)}>
+            ← Fix Details
+          </button>
+          <button onClick={() => { setStatus('loading'); setAuthErr(''); setRetryKey(k => k + 1) }} style={{ ...btnBase, fontSize: '0.95rem', padding: '14px 28px', background: '#FFCD00', color: '#1A0800', boxShadow: `4px 4px 0 ${ink}` }}
+            onMouseEnter={e => lift(e)} onMouseLeave={e => unlift(e)}>
+            ↩ Try Again
+          </button>
+        </div>
       </div>
     )
   }
@@ -1108,7 +1136,7 @@ export default function Onboarding() {
   function back() {
     setDir('back')
     setAnimKey(k => k + 1)
-    if (step === 0) { setMode('landing') } else { setStep(s => s - 1) }
+    if (step === 0) { setMode('login') } else { setStep(s => s - 1) }
   }
 
   const anim = dir === 'fwd' ? 'fly-in-right 0.32s ease both' : 'fly-in-left 0.32s ease both'
@@ -1124,7 +1152,7 @@ export default function Onboarding() {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
     }}>
       <div style={{ width: '100%', maxWidth: '520px', padding: '0 20px' }}>
-        <div style={{ padding: '18px 0 0', textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.95rem', opacity: 0.45, color: ink, letterSpacing: '0.06em' }}>★ XP Gazette</div>
+        <div style={{ padding: '18px 0 0', textAlign: 'center', fontFamily: "'Fredoka One', cursive", fontSize: '0.95rem', opacity: 0.45, color: ink, letterSpacing: '0.06em' }}>★ Knowly</div>
         {showProgress && <StepProgress step={step} />}
       </div>
 
@@ -1145,7 +1173,7 @@ export default function Onboarding() {
 
           {mode === 'signup' && (
             <div key={animKey} style={{ animation: anim }}>
-              {step === 0 && <Step1Welcome onNext={next} />}
+              {step === 0 && <Step1Welcome onNext={next} onBack={back} />}
               {step === 1 && (
                 <Step2Identity
                   name={form.name} username={form.username} avatarIdx={form.avatarIdx}
@@ -1178,6 +1206,7 @@ export default function Onboarding() {
                   newCommunityEmoji={form.newCommunityEmoji}
                   communityCode={form.communityCode}
                   email={form.email} password={form.password}
+                  onBack={() => { setDir('back'); setAnimKey(k => k + 1); setStep(1) }}
                 />
               )}
             </div>

@@ -1,5 +1,5 @@
 /**
- * XP Gazette — Full Seed Script
+ * Knowly — Full Seed Script
  * Applies schema migration then seeds 50 users, ~300 game results, badges, etc.
  *
  * Usage:
@@ -312,22 +312,22 @@ function badgesForUser(userId: string, xp: number, count: number) {
 // ── News items ────────────────────────────────────────────────────
 
 const NEWS = [
-  { headline: '★ COMPOUND INTEREST: The secret banks hope you never discover',           source: 'XP Gazette', category: 'education' },
-  { headline: '★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',         source: 'XP Gazette', category: 'education' },
-  { headline: '★ DAILY CHALLENGE UNLOCKED: Today\'s financial puzzle is now live',       source: 'XP Gazette', category: 'game'      },
+  { headline: '★ COMPOUND INTEREST: The secret banks hope you never discover',           source: 'Knowly', category: 'education' },
+  { headline: '★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',         source: 'Knowly', category: 'education' },
+  { headline: '★ DAILY CHALLENGE UNLOCKED: Today\'s financial puzzle is now live',       source: 'Knowly', category: 'game'      },
   { headline: '★ PKO EXCLUSIVE: New savings rates — are you getting yours?',             source: 'PKO Bank',   category: 'partner'   },
-  { headline: '★ STREAK ALERT: 847 players maintained a 7-day streak this week',         source: 'XP Gazette', category: 'community' },
-  { headline: '★ FRAUD ALERT: Three new phishing schemes targeting Polish bank users',   source: 'XP Gazette', category: 'security'  },
+  { headline: '★ STREAK ALERT: 847 players maintained a 7-day streak this week',         source: 'Knowly', category: 'community' },
+  { headline: '★ FRAUD ALERT: Three new phishing schemes targeting Polish bank users',   source: 'Knowly', category: 'security'  },
   { headline: '★ MARKET UPDATE: Warsaw Stock Exchange hits 3-month high this morning',   source: 'WSE Report', category: 'markets'   },
-  { headline: '★ NEW GAME MODE: Fraud Spotter challenge now available — test yourself',  source: 'XP Gazette', category: 'game'      },
-  { headline: '★ LEADERBOARD SHAKEUP: Compound Carl reclaims #1 spot after 42-day run', source: 'XP Gazette', category: 'community' },
-  { headline: '★ LEARNING PATH: Module 3 "Investing Basics" now unlocked for all users', source: 'XP Gazette', category: 'education' },
+  { headline: '★ NEW GAME MODE: Fraud Spotter challenge now available — test yourself',  source: 'Knowly', category: 'game'      },
+  { headline: '★ LEADERBOARD SHAKEUP: Compound Carl reclaims #1 spot after 42-day run', source: 'Knowly', category: 'community' },
+  { headline: '★ LEARNING PATH: Module 3 "Investing Basics" now unlocked for all users', source: 'Knowly', category: 'education' },
 ]
 
 // ── Main ─────────────────────────────────────────────────────────
 
 async function run() {
-  console.log('🌱  Starting XP Gazette seed...\n')
+  console.log('🌱  Starting Knowly seed...\n')
 
   await applyMigration()
 

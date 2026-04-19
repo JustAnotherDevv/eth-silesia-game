@@ -1,4 +1,4 @@
--- XP Gazette — Seed Data
+-- Knowly — Seed Data
 -- Run AFTER 001_schema.sql
 -- Uses fixed UUIDs so game_results and org_members can reference users
 
@@ -6,6 +6,7 @@
 INSERT INTO public.orgs (id, name, emoji, color, is_public, invite_code, description) VALUES
   ('eth-silesia',  'ETH Silesia',       '⛓️', '#7B2D8B', true,  null,      'Blockchain & crypto enthusiasts from Silesia.'),
   ('pko-bank',     'PKO Bank',          '🏦', '#1565C0', true,  null,      'PKO Bank innovation & fintech team.'),
+  ('eth-legal',    'ETHLegal',          '⚖️', '#2D9A4E', true,  null,      'Consumer rights & legal literacy — know your rights in finance, data, and digital life.'),
   ('warsaw-uni',   'Warsaw University', '🎓', '#2D9A4E', true,  null,      'University of Warsaw finance students.'),
   ('fintech-hub',  'FinTech Hub',       '⚡', '#FF7B25', true,  null,      'Warsaw FinTech startup community.'),
   ('genesis-dao',  'Genesis DAO',       '🌐', '#E63946', false, 'GENESIS', 'Private DAO — invite only.'),
@@ -213,16 +214,16 @@ ON CONFLICT (user_id, badge_id) DO NOTHING;
 
 -- ── News items ────────────────────────────────────────────────────
 INSERT INTO public.news_items (headline, source, category) VALUES
-  ('★ COMPOUND INTEREST: The secret banks hope you never discover',         'XP Gazette',   'education'),
-  ('★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',       'XP Gazette',   'education'),
-  ('★ DAILY CHALLENGE UNLOCKED: Today''s financial puzzle is now live',     'XP Gazette',   'game'),
+  ('★ COMPOUND INTEREST: The secret banks hope you never discover',         'Knowly',   'education'),
+  ('★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',       'Knowly',   'education'),
+  ('★ DAILY CHALLENGE UNLOCKED: Today''s financial puzzle is now live',     'Knowly',   'game'),
   ('★ PKO EXCLUSIVE: New savings rates — are you getting yours?',           'PKO Bank',     'partner'),
-  ('★ STREAK ALERT: 847 players maintained a 7-day streak this week',       'XP Gazette',   'community'),
-  ('★ FRAUD ALERT: Three new phishing schemes targeting Polish bank users',  'XP Gazette',   'security'),
+  ('★ STREAK ALERT: 847 players maintained a 7-day streak this week',       'Knowly',   'community'),
+  ('★ FRAUD ALERT: Three new phishing schemes targeting Polish bank users',  'Knowly',   'security'),
   ('★ MARKET UPDATE: Warsaw Stock Exchange hits 3-month high this morning',  'WSE Report',   'markets'),
-  ('★ NEW GAME MODE: Fraud Spotter challenge now available — test yourself', 'XP Gazette',   'game'),
-  ('★ LEADERBOARD SHAKEUP: Compound Carl reclaims #1 spot after 42-day run','XP Gazette',   'community'),
-  ('★ LEARNING PATH: Module 3 "Investing Basics" now unlocked for all users','XP Gazette',  'education');
+  ('★ NEW GAME MODE: Fraud Spotter challenge now available — test yourself', 'Knowly',   'game'),
+  ('★ LEADERBOARD SHAKEUP: Compound Carl reclaims #1 spot after 42-day run','Knowly',   'community'),
+  ('★ LEARNING PATH: Module 3 "Investing Basics" now unlocked for all users','Knowly',  'education');
 
 -- ── Invite codes ──────────────────────────────────────────────────
 INSERT INTO public.invite_codes (org_id, code, created_by, max_uses, active) VALUES

@@ -26,7 +26,10 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize from localStorage immediately so returning users don't flash the loading screen
   const [session,  setSessionState] = useState<Session | null>(() => getSession())
-  const [loading,  setLoading]      = useState(true)
+  // If localStorage already has a session we don't need to block the UI on the
+  // Supabase round-trip — we already know who the user is. Only block when
+  // there's no local session and we need Supabase to tell us.
+  const [loading,  setLoading]      = useState(() => !getSession())
   const [isAdmin,  setIsAdmin]      = useState(() => {
     const s = getSession()
     return s ? localStorage.getItem(`xp_admin_${s.id}`) === 'true' : false
@@ -59,6 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    // Hard deadline: never block the UI for more than 3 seconds regardless of
+    // what Supabase does (hangs, slow network, SDK bugs).
+    const timeout = setTimeout(() => setLoading(false), 3000)
+
     supabase.auth.getSession().then(async ({ data: { session: authSession } }) => {
       if (authSession) {
         // Auth session exists — validate against DB
@@ -77,28 +84,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSessionState(null)
       }
       setLoading(false)
+      clearTimeout(timeout)
+    }).catch(() => {
+      setLoading(false)
+      clearTimeout(timeout)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, authSession) => {
+    // Supabase serializes auth ops with an internal lock held for the duration of
+    // the onAuthStateChange callback. If we `await` another supabase call here
+    // (getSession, admin fetches, etc.) anything else trying to touch the auth
+    // mutex in parallel — e.g. getAuthHeader() during a login click — deadlocks.
+    // Defer async work with setTimeout so the lock is released before we run.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, authSession) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && authSession) {
-        // Attempt to load DB user; silently ignore failure (user may be mid-registration)
-        await loadUserFromAuth(authSession.user.id)
+        setTimeout(() => { loadUserFromAuth(authSession.user.id) }, 0)
       } else if (event === 'SIGNED_OUT') {
         clearSession()
         setSessionState(null)
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => { subscription.unsubscribe(); clearTimeout(timeout) }
   }, [])
 
   async function signOut() {
-    // Clear local state immediately — don't block on Supabase network call
+    // scope:'local' clears the Supabase client session instantly without a
+    // network round-trip, so the client is immediately ready for a new sign-in
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
     clearSession()
     setSessionState(null)
     setIsAdmin(false)
-    // Best-effort server-side sign out (fire and forget)
-    supabase.auth.signOut().catch(() => {})
   }
 
   return (

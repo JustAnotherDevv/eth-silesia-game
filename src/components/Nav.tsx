@@ -51,7 +51,7 @@ export function Nav() {
             fontFamily: "'Fredoka One', cursive",
             fontSize: '1rem', letterSpacing: '0.02em',
             textDecoration: 'none', color: 'var(--rh-ink)', whiteSpace: 'nowrap',
-          }}>★ XP Gazette</Link>
+          }}>★ Knowly</Link>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <ThemeToggle />
@@ -165,7 +165,7 @@ export function Nav() {
         color: 'var(--rh-ink)',
         whiteSpace: 'nowrap',
         opacity: 0.9,
-      }}>★ XP Gazette</Link>
+      }}>★ Knowly</Link>
 
       <OrgSwitcher />
 

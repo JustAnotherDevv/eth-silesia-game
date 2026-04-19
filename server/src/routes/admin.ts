@@ -215,7 +215,7 @@ admin.post('/news', async (c) => {
 
   const { data, error } = await supabase
     .from('news_items')
-    .insert({ headline: headline.trim(), source: source ?? 'XP Gazette', category: safeCategory, active: true })
+    .insert({ headline: headline.trim(), source: source ?? 'Knowly', category: safeCategory, active: true })
     .select()
     .single()
 

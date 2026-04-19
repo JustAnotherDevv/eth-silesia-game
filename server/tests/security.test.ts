@@ -542,7 +542,7 @@ describe('A07 – Authentication Failures', () => {
   })
 
   describe('Registration rate limiting', () => {
-    it('POST /api/auth/register → 429 after 5 requests from same IP', async () => {
+    it('POST /api/auth/register → 429 after 20 requests from same IP', async () => {
       supabaseMock.from.mockImplementation((table: string) => {
         if (table === 'users') return makeQuery(makeSingle({ id: 'new-id', username: 'test' }))
         if (table === 'orgs')  return makeQuery(makeMaybeSingle(null))
@@ -560,9 +560,9 @@ describe('A07 – Authentication Failures', () => {
       }
 
       let lastStatus = 0
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 21; i++) {
         const res = await request(app, 'POST', '/api/auth/register', {
-          body: { ...payload, email: `test${i}@example.com` },
+          body: { ...payload, email: `test${i}@example.com`, username: `user${i}` },
         })
         lastStatus = res.status
       }

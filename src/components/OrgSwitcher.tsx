@@ -3,15 +3,18 @@ import { Link } from 'react-router-dom'
 import { getOrgs, getUserOrgs, joinOrg, joinOrgByCode } from '../lib/api'
 import type { Org } from '../lib/api'
 import { getSession } from '../lib/session'
+import { useOrg } from '../contexts/OrgContext'
 
 const ink   = 'var(--rh-ink)'
 const paper = 'var(--rh-paper)'
 const surface = 'var(--rh-surface)'
 
 export function OrgSwitcher() {
+  const { activeOrgId, setActiveOrgId } = useOrg()
   const [allOrgs,   setAllOrgs]   = useState<Org[]>([])
   const [joined,    setJoined]    = useState<Org[]>([])
-  const [currentId, setCurrentId] = useState('')
+  const currentId = activeOrgId ?? ''
+  const setCurrentId = (id: string) => setActiveOrgId(id || null)
   const [open,      setOpen]      = useState(false)
   const [modal,     setModal]     = useState(false)
   const [tab,       setTab]       = useState<'public' | 'code'>('public')
@@ -36,7 +39,10 @@ export function OrgSwitcher() {
       .then(async orgs => {
         if (orgs.length > 0) {
           setJoined(orgs)
-          if (!currentId) setCurrentId(orgs[0].id)
+          // Pick an active org if none set, or if stored active is no longer joined
+          if (!currentId || !orgs.some(o => o.id === currentId)) {
+            setCurrentId(orgs[0].id)
+          }
           return
         }
         // User has no spaces — auto-join the first available public one

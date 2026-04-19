@@ -1,4 +1,4 @@
-const KEY = 'xp_gazette_session'
+const KEY = 'knowly_session'
 
 export interface Session {
   id: string

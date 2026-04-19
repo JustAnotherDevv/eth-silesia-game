@@ -13,11 +13,13 @@ export interface RateLimitOptions {
 }
 
 function ipKey(c: Context): string {
-  return (
-    c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
-    c.req.header('x-real-ip') ??
-    'unknown'
-  )
+  const fwd = c.req.header('x-forwarded-for')?.split(',')[0]?.trim()
+  if (fwd) return fwd
+  const real = c.req.header('x-real-ip')
+  if (real) return real
+  // Fall back to the Node.js socket remote address (available via @hono/node-server)
+  const env = c.env as Record<string, { socket?: { remoteAddress?: string } }> | undefined
+  return env?.incoming?.socket?.remoteAddress ?? 'unknown'
 }
 
 export function rateLimit(name: string, opts: RateLimitOptions): MiddlewareHandler {
@@ -67,7 +69,7 @@ export function clearRateLimits(): void {
 // Pre-configured limiters for common use cases
 export const registrationLimiter = rateLimit('register', {
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
+  max: 20,
 })
 
 export const gameLimiter = rateLimit('game', {

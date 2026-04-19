@@ -1,4 +1,4 @@
-# XP Gazette — Project Brief for AI Agents
+# Knowly — Project Brief for AI Agents
 
 > **Last updated:** 2026-04-18
 > This document is the single source of truth for any AI agent picking up work on this project. Read it fully before touching code.
@@ -7,7 +7,7 @@
 
 ## 1. What This Is
 
-**XP Gazette** is a gamified financial literacy platform built for the **ETH Silesia 2026 hackathon**, competing in the **PKO Bank Polski "PKO XP: Gaming"** sponsor track.
+**Knowly** is a gamified financial literacy platform built for the **ETH Silesia 2026 hackathon**, competing in the **PKO Bank Polski "PKO XP: Gaming"** sponsor track.
 
 The pitch: *a game-inspired world where users onboard through a campaign, learn via short daily rounds, and develop financial competency by making simulated decisions.* It deliberately combines all three track ideas:
 
@@ -15,7 +15,7 @@ The pitch: *a game-inspired world where users onboard through a campaign, learn 
 - **Idea 2 — Financial Decisions as Gameplay** → `/decision` Decision Room branching scenario game
 - **Idea 3 — First Days in a New World** → `/onboarding` multi-step signup flow
 
-The entire product is wrapped in a **1930s rubber hose / Fleischer Studios cartoon aesthetic** — think Cuphead meets Duolingo, presented as a satirical cartoon newspaper called "XP Gazette."
+The entire product is wrapped in a **1930s rubber hose / Fleischer Studios cartoon aesthetic** — think Cuphead meets Duolingo, presented as a satirical cartoon newspaper called "Knowly."
 
 ---
 
@@ -259,7 +259,7 @@ Transitions: slide right (forward) / slide left (back) using `fly-in-right` / `f
 Sticky top nav (`position: sticky; top: 0; z-index: 100`).
 
 Layout (left → right):
-1. **Logo** — "★ XP Gazette" link to `/`
+1. **Logo** — "★ Knowly" link to `/`
 2. **OrgSwitcher** — colored org pill
 3. **Nav links** — Home, News, Quick Rounds, Design, My Path, Decision Room (pill active state)
 4. **Right pills** — 🏆 Leaderboard (#FFCD00), 🎩 Profile (#FF7B25)

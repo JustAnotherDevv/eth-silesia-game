@@ -710,7 +710,7 @@ export default function AdminPanel() {
                 Admin Panel
               </div>
               <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(1.4rem, 4vw, 2rem)', color: 'white', textShadow: '3px 3px 0 rgba(0,0,0,0.3)', lineHeight: 1.1 }}>
-                XP Gazette Control
+                Knowly Control
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                 <span style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', padding: '3px 10px', borderRadius: '9999px', background: 'rgba(255,205,0,0.9)', color: '#1A0800', border: '1.5px solid rgba(0,0,0,0.2)' }}>

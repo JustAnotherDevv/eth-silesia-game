@@ -170,7 +170,7 @@ export default function News() {
           letterSpacing: '-0.01em',
           textShadow: `4px 4px 0 ${ink}, 6px 6px 0 color-mix(in srgb, ${ink} 20%, transparent)`,
         }}>
-          The XP Gazette
+          Knowly
         </h1>
 
         <p style={{

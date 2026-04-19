@@ -1,4 +1,4 @@
--- XP Gazette — Initial Schema
+-- Knowly — Initial Schema
 -- Run via: supabase db push  OR  paste into Supabase SQL editor
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS public.user_badges (
 CREATE TABLE IF NOT EXISTS public.news_items (
   id         UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
   headline   TEXT        NOT NULL,
-  source     TEXT        NOT NULL DEFAULT 'XP Gazette',
+  source     TEXT        NOT NULL DEFAULT 'Knowly',
   category   TEXT        NOT NULL DEFAULT 'news',
   active     BOOLEAN     NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

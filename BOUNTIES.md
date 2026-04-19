@@ -18,7 +18,7 @@ Design gamified educational experiences inspired by game mechanics: short rounds
 **Deliverable:** Concept description + demo/mockup/video
 **Mentors:** Jakub Kaszuba, Michał Łopaciński, Kuba Kuśmierz
 
-### How XP Gazette covers it
+### How Knowly covers it
 | Idea | Feature in our app |
 |------|--------------------|
 | Idea 1 — Short Rounds | `/quiz` Quick Rounds + lesson mini-games in `/path` modal (3-question quiz per lesson) |
@@ -46,7 +46,7 @@ Problem areas:
 
 **What they care about:** Real-world usability, good use of blockchain (not "just mint an NFT"), thoughtful identity/ownership design, simplicity over complexity, great UX for non-crypto users.
 
-### How XP Gazette overlaps
+### How Knowly overlaps
 Our **org switcher and spaces system** is literally the core of what they're describing:
 
 | Their problem | Our existing feature |
@@ -64,7 +64,7 @@ Our **org switcher and spaces system** is literally the core of what they're des
 4. **Simple payment demo** — show that a "desk booking" or event ticket could be paid in ETH/stablecoin via the space's treasury.
 
 ### Pitch angle
-> "XP Gazette started as a financial literacy platform, but the organization space system we built — join spaces via token or code, build reputation through XP and badges, participate in community events — is exactly the programmable, community-owned coworking infrastructure Kolektyw3 wants. We're applying the same mechanics to physical-space membership."
+> "Knowly started as a financial literacy platform, but the organization space system we built — join spaces via token or code, build reputation through XP and badges, participate in community events — is exactly the programmable, community-owned coworking infrastructure Kolektyw3 wants. We're applying the same mechanics to physical-space membership."
 
 This is honest and compelling. Our UX is already there. We need a thin blockchain integration to make it real.
 
@@ -89,7 +89,7 @@ AI-powered solutions for Tauron's business: electricity consumption analysis, cu
 
 Focus areas: energy consumption data, electricity usage patterns, customer behavior, smart tariff guidance, household usage profiling.
 
-### Why XP Gazette doesn't fit
+### Why Knowly doesn't fit
 - Tauron is an **energy company** — the judging will heavily weight relevance to energy/electricity
 - Our platform is about **financial literacy** — different domain, different customer, different data
 - No AI features in the current build (all game logic is hardcoded/static)

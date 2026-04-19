@@ -1,5 +1,5 @@
 /**
- * XP Gazette — End-to-End API Test Suite
+ * Knowly — End-to-End API Test Suite
  * Starts the server, tests every endpoint, then kills it.
  * Run with: npm run test:e2e
  */
@@ -384,7 +384,7 @@ async function testDataIntegrity() {
 // ── Main ─────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('🧪  XP Gazette E2E Tests\n')
+  console.log('🧪  Knowly E2E Tests\n')
   console.log(`   Server: ${BASE}`)
   console.log(`   Supabase: ${process.env.SUPABASE_URL ?? '(not set)'}`)
 

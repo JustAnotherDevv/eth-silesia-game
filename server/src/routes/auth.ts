@@ -7,10 +7,11 @@ import { sanitizeError } from '../middleware/errorHandler.js'
 export const auth = new Hono()
 
 const ORG_KEY_TO_NAME: Record<string, string> = {
-  ETH_SIL:  'ETH Silesia',
-  PKO_BANK: 'PKO Bank',
-  WAW_UNI:  'Warsaw University',
-  FINTECH:  'FinTech Hub',
+  ETH_SIL:   'ETH Silesia',
+  PKO_BANK:  'PKO Bank',
+  ETH_LEGAL: 'ETHLegal',
+  WAW_UNI:   'Warsaw University',
+  FINTECH:   'FinTech Hub',
 }
 
 // A07: rate-limit registration to prevent credential stuffing / spam

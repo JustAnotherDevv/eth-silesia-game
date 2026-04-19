@@ -173,7 +173,7 @@
   You can't demo the exact same app to both PKO (financial content) and Tauron (energy content) without it looking lazy. You'd need one of:                 
    
   1. Two content skins — same platform, swapped quiz data and learning path topics. Probably 3-4h of content work.                                          
-  2. Pitch it as configurable — "XP Gazette is a white-label gamified education platform. PKO track: financial literacy. Tauron track: energy literacy."
+  2. Pitch it as configurable — "Knowly is a white-label gamified education platform. PKO track: financial literacy. Tauron track: energy literacy."
   Risky — judges want to see their solution, not potential.                                                                                                 
                                                                   
   Chatbot angle: real stretch. You don't have one. Don't overclaim.                                                                                         

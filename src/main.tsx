@@ -21,6 +21,7 @@ import AdminPanel from './pages/AdminPanel'
 import Episode from './pages/Episode'
 import EpisodeNew from './pages/EpisodeNew'
 import { Nav } from './components/Nav'
+import { CookieBanner } from './components/CookieBanner'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { OrgProvider } from './contexts/OrgContext'
 import { getSession } from './lib/session'
@@ -88,6 +89,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/episode/:id?" element={<ProtectedRoute><Episode /></ProtectedRoute>} />
           <Route path="/episode-new" element={<ProtectedRoute><EpisodeNew /></ProtectedRoute>} />
         </Routes>
+        <CookieBanner />
         </OrgProvider>
       </AuthProvider>
     </BrowserRouter>

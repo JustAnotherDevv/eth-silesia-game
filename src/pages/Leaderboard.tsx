@@ -197,7 +197,6 @@ export default function Leaderboard() {
                 fontFamily: "'Fredoka One', cursive",
                 fontSize: 'clamp(2rem, 5vw, 3rem)',
                 lineHeight: 1, marginBottom: '8px',
-                textShadow: `4px 4px 0 ${ink}`,
               }}>The Leaderboard</h1>
               <p style={{
                 fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,

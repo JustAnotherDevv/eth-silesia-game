@@ -312,7 +312,6 @@ export default function MemberProfile() {
                     fontFamily:"'Fredoka One', cursive",
                     fontSize:'clamp(2.2rem, 5vw, 3.4rem)', lineHeight:1,
                     color: textOn,
-                    textShadow: isLight ? `4px 4px 0 rgba(26,8,0,0.2)` : `3px 3px 0 rgba(0,0,0,0.3)`,
                     margin:0,
                   }}>{member.name}</h1>
                   {member.isYou && (

@@ -280,7 +280,6 @@ export default function Profile() {
               <h1 style={{
                 fontFamily: "'Fredoka One', cursive",
                 fontSize: '1.9rem', lineHeight: 1, marginBottom: '4px',
-                textShadow: `3px 3px 0 ${ink}`,
               }}>{PLAYER.name}</h1>
               <p style={{
                 fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600,

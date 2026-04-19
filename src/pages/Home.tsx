@@ -23,7 +23,7 @@ const DEFAULT_PLAYER = { name: 'You', level: 1, xp: 0, xpMax: 500, streak: 0,
 
 function PageGameModes({ modes }: { modes: GameModeCompact[] }) {
   return (
-    <div style={{ padding: '16px' }}>
+    <div style={{ padding: '16px 44px' }}>
       {modes.map((m, i) => (
         <div key={m.tag} style={{ marginBottom: i < modes.length-1 ? '16px' : 0, paddingBottom: i < modes.length-1 ? '16px' : 0, borderBottom: i < modes.length-1 ? `1.5px solid ${ink}` : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
@@ -47,7 +47,7 @@ function PageGameModes({ modes }: { modes: GameModeCompact[] }) {
 function PageStreak({ streak, content }: { streak: number; content: HomeContent['streak'] }) {
   const body = content.bodyTemplate.replace('{streak}', String(streak))
   return (
-    <div style={{ padding: '16px' }}>
+    <div style={{ padding: '16px 44px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
         <span style={{ background: '#FF7B25', color: '#1A0800', fontFamily: "'Fredoka One', cursive", fontSize: '0.56rem', letterSpacing: '0.1em', padding: '1px 9px', borderRadius: '9999px', border: `2px solid ${ink}`, boxShadow: `2px 2px 0 ${ink}` }}>DAILY STREAK</span>
       </div>
@@ -82,7 +82,7 @@ function PageAchievements() {
     { icon: '🌟', label: 'Perfect Round', desc: 'Score 5/5 on any quiz' },
   ]
   return (
-    <div style={{ padding: '16px' }}>
+    <div style={{ padding: '16px 44px' }}>
       <div style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.55, marginBottom: '10px' }}>Earned</div>
       {earned.map(a => (
         <div key={a.label} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
@@ -110,7 +110,7 @@ function PageAchievements() {
 
 function PageBackCover({ content }: { content: HomeContent['backCover'] }) {
   return (
-    <div style={{ padding: '20px', textAlign: 'center' }}>
+    <div style={{ padding: '20px 44px', textAlign: 'center' }}>
       <div style={{ fontSize: '4rem', marginBottom: '10px' }} className="rh-animate-float">{content.emoji}</div>
       <h3 style={{ fontFamily: "'Fredoka One', cursive", fontSize: '1.5rem', lineHeight: 1.1, marginBottom: '10px' }}>
         {content.headline}
@@ -135,10 +135,29 @@ function OldHomepageBody({ player, content }: { player: typeof DEFAULT_PLAYER; c
   const { hero, gameModesFull, forecast } = content
   return (
     <div>
+      {/* Headline photo — newspaper-style hero image with caption */}
+      <div style={{ borderBottom: `2px solid ${ink}`, padding: '12px 44px 10px 44px' }}>
+        <div style={{
+          width: '100%', aspectRatio: '4 / 1', overflow: 'hidden',
+          border: `2.5px solid ${ink}`, boxShadow: `4px 4px 0 ${ink}`,
+          filter: 'contrast(1.05) saturate(0.95)', background: surface,
+        }}>
+          <img src="/banner.png" alt={hero.headline} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        </div>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          marginTop: '6px', fontFamily: "'Fredoka Variable', sans-serif",
+          fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6,
+        }}>
+          <span><strong style={{ letterSpacing: '0.16em' }}>Figure 1</strong> · {hero.eyebrow}</span>
+          <span>Photo: Knowly Staff</span>
+        </div>
+      </div>
+
       {/* Row 1: Hero + Sidebar */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', borderBottom: `2px solid ${ink}` }}>
         <div style={{
-          padding: '20px 20px 20px 0', borderRight: `2px solid ${ink}`,
+          padding: '20px 30px 20px 44px', borderRight: `2px solid ${ink}`,
           cursor: 'pointer', transition: 'background 0.12s',
         }}
         onMouseEnter={e => (e.currentTarget.style.background = surface)}
@@ -167,7 +186,7 @@ function OldHomepageBody({ player, content }: { player: typeof DEFAULT_PLAYER; c
         </div>
 
         {/* Player sidebar */}
-        <div style={{ padding: '18px' }}>
+        <div style={{ padding: '18px 44px 18px 30px' }}>
           <div style={{ border: `2.5px solid ${ink}`, borderRadius: '1.4rem 1.6rem 1.5rem 1.3rem', boxShadow: `5px 5px 0 ${ink}`, overflow: 'hidden', marginBottom: '14px', background: card }}>
             <div style={{ background: surface, borderBottom: `2px solid ${ink}`, padding: '7px 14px', fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
               <span>Your Profile</span><span>★</span>
@@ -213,7 +232,11 @@ function OldHomepageBody({ player, content }: { player: typeof DEFAULT_PLAYER; c
       {/* Row 2: Three game modes */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderBottom: `2px solid ${ink}` }}>
         {gameModesFull.map((m, i) => (
-          <div key={m.tag} style={{ padding: '18px', borderRight: i < 2 ? `2px solid ${ink}` : 'none', cursor: 'pointer', transition: 'background 0.12s' }}
+          <div key={m.tag} style={{
+            padding: i === 0 ? '18px 26px 18px 44px' : i === 2 ? '18px 44px 18px 26px' : '18px 26px',
+            borderRight: i < 2 ? `2px solid ${ink}` : 'none',
+            cursor: 'pointer', transition: 'background 0.12s',
+          }}
           onMouseEnter={e => (e.currentTarget.style.background = surface)}
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
@@ -336,14 +359,29 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey)
   }, [flip])
 
-  // Measure spread-0's full newspaper height once fonts load,
+  // Measure spread-0's full newspaper height once fonts + images load,
   // then lock the newspaper box to that height forever.
   const paperRef    = useRef<HTMLDivElement>(null)
   const [paperHeight, setPaperHeight] = useState(0)
   useEffect(() => {
+    let cancelled = false
+    const measure = () => {
+      if (!cancelled && paperRef.current) {
+        setPaperHeight(h => Math.max(h, paperRef.current!.scrollHeight))
+      }
+    }
     document.fonts.ready.then(() => {
-      if (paperRef.current) setPaperHeight(paperRef.current.scrollHeight)
+      measure()
+      // Re-measure after async images (banner.png) settle
+      const imgs = paperRef.current?.querySelectorAll('img') ?? []
+      imgs.forEach(img => {
+        if (!img.complete) img.addEventListener('load', measure, { once: true })
+      })
+      // Final safety re-measure after any late layout
+      setTimeout(measure, 300)
+      setTimeout(measure, 800)
     })
+    return () => { cancelled = true }
   }, [])
 
   const curr = SPREADS[idx]
@@ -516,6 +554,27 @@ export default function Home() {
           <p style={{ fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 600, fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', opacity: 0.55, margin: 0 }}>{mastheadSubtitle}</p>
         </div>
 
+        {/* Headline photo (mobile) */}
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{
+            width: '100%', aspectRatio: '16 / 9', overflow: 'hidden',
+            border: `2.5px solid ${ink}`, borderRadius: '1rem',
+            boxShadow: `4px 4px 0 ${ink}`, background: paper,
+            filter: 'contrast(1.05) saturate(0.95)',
+          }}>
+            <img src="/banner.png" alt={content.hero.headline} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          </div>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+            marginTop: '5px', padding: '0 4px',
+            fontFamily: "'Fredoka Variable', sans-serif",
+            fontSize: '0.58rem', letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6,
+          }}>
+            <span><strong style={{ letterSpacing: '0.16em' }}>Figure 1</strong> · {content.hero.eyebrow}</span>
+            <span>Photo: Staff</span>
+          </div>
+        </div>
+
         {/* Player card */}
         <div style={{ border: `2.5px solid ${ink}`, borderRadius: '1.2rem', boxShadow: `4px 4px 0 ${ink}`, overflow: 'hidden', marginBottom: '14px', background: paper }}>
           <div style={{ background: surface, borderBottom: `2px solid ${ink}`, padding: '7px 14px', fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
@@ -589,16 +648,16 @@ export default function Home() {
       }}>
 
         {/* ── Top meta ──────────────────────────────────────── */}
-        <div style={{ borderBottom: `2px solid ${ink}`, padding: '5px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.63rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.65 }}>
+        <div style={{ borderBottom: `2px solid ${ink}`, padding: '5px 44px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: "'Fredoka Variable', sans-serif", fontWeight: 700, fontSize: '0.63rem', letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.65 }}>
           <span>Vol. I · No. 42 · Est. 2026</span>
           <span>{TODAY}</span>
           <span>Price: Free of Charge</span>
         </div>
 
         {/* ── Masthead (old non-inverted style) ─────────────── */}
-        <div style={{ textAlign: 'center', padding: '20px 22px 14px', borderBottom: `4px double ${ink}`, position: 'relative' }}>
-          <div style={{ position: 'absolute', left: '28px', top: '50%', transform: 'translateY(-50%)', fontFamily: "'Fredoka One', cursive", fontSize: '1.1rem', opacity: 0.25, letterSpacing: '0.3em' }} className="rh-animate-float">✦ ✦ ✦</div>
-          <div style={{ position: 'absolute', right: '28px', top: '50%', transform: 'translateY(-50%)', fontFamily: "'Fredoka One', cursive", fontSize: '1.1rem', opacity: 0.25, letterSpacing: '0.3em' }} className="rh-animate-float">✦ ✦ ✦</div>
+        <div style={{ textAlign: 'center', padding: '20px 44px 14px', borderBottom: `4px double ${ink}`, position: 'relative' }}>
+          <div style={{ position: 'absolute', left: '52px', top: '50%', transform: 'translateY(-50%)', fontFamily: "'Fredoka One', cursive", fontSize: '1.1rem', opacity: 0.25, letterSpacing: '0.3em' }} className="rh-animate-float">✦ ✦ ✦</div>
+          <div style={{ position: 'absolute', right: '52px', top: '50%', transform: 'translateY(-50%)', fontFamily: "'Fredoka One', cursive", fontSize: '1.1rem', opacity: 0.25, letterSpacing: '0.3em' }} className="rh-animate-float">✦ ✦ ✦</div>
           <p style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.6rem', letterSpacing: '0.35em', textTransform: 'uppercase', opacity: 0.5, marginBottom: '4px' }}>★ The Original · Est. 2026 ★</p>
           <h1 style={{ fontFamily: "'Fredoka One', cursive", fontSize: 'clamp(2.8rem, 8vw, 5.5rem)', lineHeight: 1, margin: 0, letterSpacing: '-0.01em', textShadow: `4px 4px 0 ${ink}, 6px 6px 0 color-mix(in srgb, ${ink} 20%, transparent)` }}>
             Knowly
@@ -608,16 +667,31 @@ export default function Home() {
           </p>
         </div>
 
-        {/* ── Section nav ───────────────────────────────────── */}
+        {/* ── Section nav — minigame launcher ───────────────── */}
         <div style={{ borderBottom: `2px solid ${ink}`, display: 'flex', justifyContent: 'center' }}>
           {sectionNav.map((s,i,arr) => (
-            <button key={s} style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '8px 20px', borderRight: i < arr.length-1 ? `1.5px solid ${ink}` : 'none', background: 'transparent', cursor: 'pointer', transition: 'background 0.1s', opacity: 0.75 }}
-              onMouseEnter={e=>(e.currentTarget.style.background=surface)} onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>{s}</button>
+            <Link
+              key={s.href}
+              to={s.href}
+              style={{
+                fontFamily: "'Fredoka One', cursive", fontSize: '0.65rem',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                padding: '8px 20px',
+                borderRight: i < arr.length-1 ? `1.5px solid ${ink}` : 'none',
+                background: 'transparent', cursor: 'pointer',
+                transition: 'background 0.1s', opacity: 0.75,
+                textDecoration: 'none', color: ink,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = surface)}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              {s.label}
+            </Link>
           ))}
         </div>
 
         {/* ── Per-spread headline — always rendered so height is identical on every page ── */}
-        <div style={{ padding: '12px 18px 0', borderBottom: `1.5px solid ${ink}` }}>
+        <div style={{ padding: '12px 44px 0', borderBottom: `1.5px solid ${ink}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
             <span style={{ background: ink, color: paper, fontFamily: "'Fredoka One', cursive", fontSize: '0.58rem', letterSpacing: '0.14em', padding: '2px 10px', borderRadius: '9999px' }}>
               {(flipping ? tgt : curr).label.toUpperCase()}
@@ -646,7 +720,7 @@ export default function Home() {
         </div>
 
         {/* ── Navigation bar ────────────────────────────────── */}
-        <div style={{ borderTop: `2px solid ${ink}`, padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: surface, flexShrink: 0 }}>
+        <div style={{ borderTop: `2px solid ${ink}`, padding: '10px 44px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: surface, flexShrink: 0 }}>
           <NavArrow disabled={idx === 0 || flipping} onClick={() => flip('bwd')}>← Prev Page</NavArrow>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {SPREADS.map((_, i) => (

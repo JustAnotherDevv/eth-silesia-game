@@ -9,10 +9,10 @@ const TODAY = new Date().toLocaleDateString('en-US', {
 })
 
 const TICKER_ITEMS = [
-  '★ COMPOUND INTEREST: The secret banks hope you never discover',
+  '★ COMPOUND INTEREST: The fundamental every smart saver should master',
   '★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',
   '★ DAILY CHALLENGE UNLOCKED: Today\'s financial puzzle is live',
-  '★ PKO EXCLUSIVE: New savings rates announced — are you getting yours?',
+  '★ PKO EXCLUSIVE: New promotional savings rates now live — optimize yours today',
   '★ STREAK ALERT: 847 players maintained a 7-day streak this week',
 ]
 
@@ -20,8 +20,8 @@ const GAME_MODES = [
   {
     tag: 'QUICK ROUNDS',
     kicker: 'TEST YOUR KNOWLEDGE',
-    headline: 'Are You Smarter Than Your Bank Manager?',
-    body: 'Five rapid-fire questions. Thirty seconds each. Your financial IQ is about to be revealed — for better or worse.',
+    headline: 'Think Like Your Bank Manager — Can You Nail Five In A Row?',
+    body: 'Five rapid-fire questions. Thirty seconds each. Find out how close you are to pro-level financial thinking.',
     emoji: '🎯',
     accent: '#FFCD00',
     cta: 'Start Quiz →',
@@ -241,7 +241,7 @@ export default function News() {
               fontSize: 'clamp(1.6rem, 3vw, 2.6rem)',
               lineHeight: 1.1, marginBottom: '14px',
             }}>
-              Compound Interest: The Villain Banks Hope You Never Discover
+              Compound Interest: The Superpower Every Saver Should Master
             </h2>
 
             <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
@@ -251,7 +251,7 @@ export default function News() {
                   fontWeight: 500, fontSize: '0.9rem',
                   lineHeight: 1.65, opacity: 0.8, marginBottom: '20px',
                 }}>
-                  In a shocking exposé rocking the financial world, local experts confirmed what savvy investors long suspected: compound interest, when working <em>for</em> you, is the closest thing to a legal money-printing machine. When working <em>against</em> you, however...
+                  In a deep-dive feature rocking the financial world, local experts unpacked the timeless truth every saver can put to work: compound interest, when working <em>for</em> you, is the closest thing to a legal money-printing machine. When working <em>against</em> you, however...
                 </p>
 
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>

@@ -312,10 +312,10 @@ function badgesForUser(userId: string, xp: number, count: number) {
 // ── News items ────────────────────────────────────────────────────
 
 const NEWS = [
-  { headline: '★ COMPOUND INTEREST: The secret banks hope you never discover',           source: 'Knowly', category: 'education' },
+  { headline: '★ COMPOUND INTEREST: The fundamental every smart saver should master',    source: 'Knowly', category: 'education' },
   { headline: '★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',         source: 'Knowly', category: 'education' },
   { headline: '★ DAILY CHALLENGE UNLOCKED: Today\'s financial puzzle is now live',       source: 'Knowly', category: 'game'      },
-  { headline: '★ PKO EXCLUSIVE: New savings rates — are you getting yours?',             source: 'PKO Bank',   category: 'partner'   },
+  { headline: '★ PKO EXCLUSIVE: New promotional savings rates now live — optimize yours today', source: 'PKO Bank',   category: 'partner'   },
   { headline: '★ STREAK ALERT: 847 players maintained a 7-day streak this week',         source: 'Knowly', category: 'community' },
   { headline: '★ FRAUD ALERT: Three new phishing schemes targeting Polish bank users',   source: 'Knowly', category: 'security'  },
   { headline: '★ MARKET UPDATE: Warsaw Stock Exchange hits 3-month high this morning',   source: 'WSE Report', category: 'markets'   },

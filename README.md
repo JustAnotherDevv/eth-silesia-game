@@ -1,5 +1,7 @@
 # Knowly
 
+![Knowly banner](./public/banner.png)
+
 **A white-label, gamified knowledge-exchange platform.** One codebase, many spaces — each organization gets its own branded "newspaper" full of mini-games, branching scenarios, learning paths, leaderboards, and community features. The app ships with ready-made spaces for **PKO Bank** (financial literacy), **ETHLegal** (consumer rights & digital law), **ETH Silesia** (on-chain / DeFi), **Warsaw University** (student finance), and **Warsaw FinTech Hub** (builder / startup content) — and onboards any new organization in minutes.
 
 Built for **ETH Silesia 2026**.
@@ -23,7 +25,7 @@ Every org in Supabase owns a distinct content pack. Switching the active space i
 
 | Space | Theme | Masthead | Hero story sample | Quiz bank | Learning path |
 |-------|-------|----------|-------------------|-----------|---------------|
-| **PKO Bank** | Finance | *"All The Financial News Fit To Play · PKO Edition"* | *"PKO Savings Revolution: The Rate Your Branch Never Mentions"* | IKE/IKZE, mortgages, compound interest | Finance Basics → Investing Mastery |
+| **PKO Bank** | Finance | *"All The Financial News Fit To Play · PKO Edition"* | *"PKO Savings Upgrade: The Premium Rate Every Client Can Unlock"* | IKE/IKZE, mortgages, compound interest | Finance Basics → Investing Mastery |
 | **ETHLegal** | Legal | *"All The Consumer Rights News Fit To Play"* | *"Is Your Bank Secretly Breaking GDPR?"* | PSD2, GDPR Art. 15/17, MiCA, Rzecznik Finansowy | Data Rights → Disputes & Remedies |
 | **ETH Silesia** | Finance | *"All The On-Chain News Fit To Play"* | *"Silesia Dev Ships L2 dApp — Here's What We Learned"* | EIP-4844, blobs, L2s | (finance path fallback) |
 | **Warsaw University** | Finance | *"All The Student Finance News Fit To Play"* | *"UW Student Graduates Debt-Free — Here's Exactly How"* | Budgeting, first-job contracts | (finance path fallback) |

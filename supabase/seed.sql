@@ -214,10 +214,10 @@ ON CONFLICT (user_id, badge_id) DO NOTHING;
 
 -- ── News items ────────────────────────────────────────────────────
 INSERT INTO public.news_items (headline, source, category) VALUES
-  ('★ COMPOUND INTEREST: The secret banks hope you never discover',         'Knowly',   'education'),
+  ('★ COMPOUND INTEREST: The fundamental every smart saver should master',  'Knowly',   'education'),
   ('★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',       'Knowly',   'education'),
   ('★ DAILY CHALLENGE UNLOCKED: Today''s financial puzzle is now live',     'Knowly',   'game'),
-  ('★ PKO EXCLUSIVE: New savings rates — are you getting yours?',           'PKO Bank',     'partner'),
+  ('★ PKO EXCLUSIVE: New promotional savings rates now live — optimize yours today', 'PKO Bank', 'partner'),
   ('★ STREAK ALERT: 847 players maintained a 7-day streak this week',       'Knowly',   'community'),
   ('★ FRAUD ALERT: Three new phishing schemes targeting Polish bank users',  'Knowly',   'security'),
   ('★ MARKET UPDATE: Warsaw Stock Exchange hits 3-month high this morning',  'WSE Report',   'markets'),

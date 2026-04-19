@@ -295,7 +295,6 @@ function ProfileModal({ base, detail, onClose }: {
           <div style={{
             fontFamily:"'Fredoka One', cursive", fontSize:'1.9rem', lineHeight:1,
             color: textOnBanner,
-            textShadow: isLight ? `3px 3px 0 rgba(26,8,0,0.18)` : `2px 2px 0 rgba(0,0,0,0.3)`,
             marginBottom:'10px',
           }}>{member.displayName}</div>
 
@@ -561,7 +560,7 @@ export default function Community() {
                 <h1 style={{
                   fontFamily:"'Fredoka One', cursive",
                   fontSize:'clamp(2rem, 5vw, 3rem)', lineHeight:1,
-                  marginBottom:'8px', textShadow:`4px 4px 0 ${ink}`,
+                  marginBottom:'8px',
                 }}>The Community</h1>
                 <p style={{
                   fontFamily:"'Fredoka Variable', sans-serif", fontWeight:600,

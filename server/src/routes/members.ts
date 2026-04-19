@@ -42,6 +42,27 @@ members.get('/', async (c) => {
   if (search) query = query.ilike('display_name', `%${search}%`)
 
   if (orgId) {
+    // A01: don't let outsiders enumerate members of private orgs
+    const { data: org } = await supabase.from('orgs').select('is_public').eq('id', orgId).maybeSingle()
+    if (!org) return c.json([])
+    if (!org.is_public) {
+      const authHeader = c.req.header('Authorization')
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+      let callerId: string | null = null
+      if (token) {
+        try {
+          const { data, error } = await supabase.auth.getUser(token)
+          if (!error && data.user) callerId = data.user.id
+        } catch { /* fail closed */ }
+      }
+      if (!callerId) return c.json([])
+      const { data: membership } = await supabase
+        .from('org_members').select('user_id')
+        .eq('user_id', callerId).eq('org_id', orgId)
+        .maybeSingle()
+      if (!membership) return c.json([])
+    }
+
     const { data: ids } = await supabase.from('org_members').select('user_id').eq('org_id', orgId)
     const userIds = (ids ?? []).map(r => r.user_id)
     if (userIds.length === 0) return c.json([])

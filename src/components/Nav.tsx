@@ -9,12 +9,7 @@ import { useAuth } from '../contexts/AuthContext'
 // Flags are keyed by the flag key; null means always show (no flag controls it)
 const LINKS: { to: string; label: string; flag: string | null }[] = [
   { to: '/',          label: 'Home',          flag: null },
-  { to: '/news',      label: 'News',          flag: 'news' },
-  { to: '/quiz',      label: 'Quick Rounds',  flag: 'quiz' },
-  { to: '/path',      label: 'My Path',       flag: 'path' },
-  { to: '/decision',  label: 'Decision Room', flag: 'decision' },
-  { to: '/swipe',     label: 'Card Swipe',    flag: 'swipe' },
-  { to: '/fraud',     label: 'Fraud Spotter', flag: 'fraud' },
+  { to: '/path',      label: 'Path',          flag: 'path' },
   { to: '/community', label: 'Community',     flag: 'community' },
 ]
 
@@ -150,7 +145,7 @@ export function Nav() {
       borderBottom: '2.5px solid var(--rh-ink)',
       background: 'var(--rh-paper)',
       display: 'flex', alignItems: 'center',
-      padding: '0 20px', gap: '4px',
+      padding: '8px 20px', gap: '4px',
       backgroundImage: 'radial-gradient(circle, var(--rh-body-dot) 1px, transparent 1px)',
       backgroundSize: '18px 18px',
     }}>

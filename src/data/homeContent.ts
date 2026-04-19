@@ -29,9 +29,14 @@ export interface SpreadMeta {
   subhead: string
 }
 
+export interface SectionNavItem {
+  label: string
+  href: string
+}
+
 export interface HomeContent {
   mastheadSubtitle: string
-  sectionNav: string[]
+  sectionNav: SectionNavItem[]
   ticker: string[]
   hero: {
     eyebrow: string
@@ -67,34 +72,43 @@ export interface HomeContent {
   spreads: [SpreadMeta, SpreadMeta, SpreadMeta]
 }
 
+// Mini-game nav shared by every space — section nav doubles as the launcher.
+const MINIGAME_NAV: SectionNavItem[] = [
+  { label: 'Quick Rounds',   href: '/quiz' },
+  { label: 'Decision Room',  href: '/decision' },
+  { label: 'Card Swipe',     href: '/swipe' },
+  { label: 'Fraud Spotter',  href: '/fraud' },
+  { label: 'Cartoon Episode', href: '/episode' },
+]
+
 const FINANCE_CONTENT: HomeContent = {
   mastheadSubtitle: '"All The Financial News Fit To Play"',
-  sectionNav: ['Savings', 'Budgeting', 'Investing', 'Loans', 'Challenges'],
+  sectionNav: MINIGAME_NAV,
   ticker: [
-    '★ COMPOUND INTEREST: The secret banks hope you never discover',
+    '★ COMPOUND INTEREST: The fundamental every smart saver should master',
     '★ BUDGETING SPECIAL: The 50/30/20 rule explained in one cartoon',
     "★ DAILY CHALLENGE UNLOCKED: Today's financial puzzle is now live",
-    '★ SAVINGS SPECIAL: New rates — are you getting yours?',
+    '★ SAVINGS SPECIAL: New promotional rates live — see how to optimize yours',
     '★ STREAK ALERT: 847 players maintained a 7-day streak this week',
   ],
   hero: {
     eyebrow: "Today's Feature Story",
-    headline: 'Compound Interest: The Villain Banks Hope You Never Discover',
+    headline: 'Compound Interest: The Superpower Every Saver Should Master',
     dropCapLetter: 'I',
     dropCapRest:
-      'n a shocking exposé rocking the financial world, local experts confirmed what savvy investors long suspected: compound interest, when working <em>for</em> you, is the closest thing to a legal money-printing machine. When working <em>against</em> you, however…',
+      'n a deep-dive feature rocking the financial world, local experts unpacked the timeless truth every saver can put to work: compound interest, when working <em>for</em> you, is the closest thing to a legal money-printing machine. When working <em>against</em> you, however…',
     emoji: '🪙',
     ctaLabel: 'Read Full Story →',
     ctaHref: '/quiz',
     meta: '5 min read · +120 XP',
   },
   gameModesFull: [
-    { tag: 'QUICK ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Are You Smarter Than Your Bank Manager?',            body: 'Five rapid-fire questions. Thirty seconds each. Your financial IQ is about to be revealed.',             emoji: '🎯', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
+    { tag: 'QUICK ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Think Like Your Bank Manager — Nail Five In A Row?',            body: 'Five rapid-fire questions. Thirty seconds each. Your financial IQ is about to be revealed.',             emoji: '🎯', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
     { tag: 'DECISION ROOM', kicker: 'EXCLUSIVE SCENARIO',  headline: 'Young Investor Faces Impossible Choice',             body: 'One scenario. Multiple paths. Real consequences. Enter the Decision Room and choose wisely.',          emoji: '🎲', accent: '#E63946', cta: 'Enter Room →',    href: '/decision' },
     { tag: 'CARTOON EPISODE', kicker: 'STORY-BASED LEARNING', headline: "Can You Survive the Financial Jungle Without Going Broke?", body: "Choose your character. Face real-life money dilemmas. Every choice matters — and your wallet feels it.", emoji: '🎬', accent: '#FF7B25', cta: 'Watch Episode →', href: '/episode' },
   ],
   gameModesCompact: [
-    { tag: 'QUICK ROUNDS', kicker: 'KNOWLEDGE TEST', headline: 'Are You Smarter Than Your Bank Manager?', emoji: '🎯', accent: '#FFCD00', xp: '+80 XP', href: '/quiz' },
+    { tag: 'QUICK ROUNDS', kicker: 'KNOWLEDGE TEST', headline: 'Think Like Your Bank Manager — Nail Five In A Row?', emoji: '🎯', accent: '#FFCD00', xp: '+80 XP', href: '/quiz' },
     { tag: 'DECISION ROOM', kicker: 'SCENARIO', headline: 'Young Investor Faces Choice That Could Change Everything', emoji: '🎲', accent: '#E63946', xp: '+150 XP', href: '/decision' },
     { tag: 'CARTOON EPISODE', kicker: 'STORY GAME', headline: 'Can You Survive the Financial Jungle Without Going Broke?', emoji: '🎬', accent: '#FF7B25', xp: '+200 XP', href: '/episode' },
   ],
@@ -120,8 +134,8 @@ const FINANCE_CONTENT: HomeContent = {
   spreads: [
     {
       label: 'Front Page',
-      headline: 'Compound Interest Scandal Rocks The Entire Banking World',
-      subhead: 'Local experts reveal the truth behind the most powerful force in all of finance',
+      headline: 'Compound Interest Spotlight: The Most Powerful Force In Finance',
+      subhead: 'Local experts unpack the timeless truth every saver can put to work for themselves',
     },
     {
       label: 'Game Modes',
@@ -138,7 +152,7 @@ const FINANCE_CONTENT: HomeContent = {
 
 const LEGAL_CONTENT: HomeContent = {
   mastheadSubtitle: '"All The Consumer Rights News Fit To Play"',
-  sectionNav: ['Data', 'Banking', 'Credit', 'Crypto', 'Disputes'],
+  sectionNav: MINIGAME_NAV,
   ticker: [
     '★ GDPR SHOCK: EU regulator fines Big Tech €390M for cookie consent abuse',
     '★ PSD2 ALERT: You have 13 months to dispute a card fraud — not 48 hours',
@@ -148,17 +162,17 @@ const LEGAL_CONTENT: HomeContent = {
   ],
   hero: {
     eyebrow: "Today's Feature Story",
-    headline: 'Is Your Bank Secretly Breaking GDPR? The Clauses They Hope You Never Read',
+    headline: 'Your Data, Your Rights: The GDPR Clauses Every Client Should Know',
     dropCapLetter: 'E',
     dropCapRest:
-      'U regulators confirmed what consumer advocates long suspected: most standard banking T&Cs contain terms that quietly waive your rights. Article 15 guarantees data access in 30 days. Article 17 gives you the right to be forgotten. When you know the law, <em>you</em> hold the pen…',
+      'U regulators reminded consumers this week how strong their rights actually are: Article 15 guarantees data access within 30 days. Article 17 gives you the right to be forgotten. When you know the law, <em>you</em> hold the pen — and every reputable institution has to play by the same rules…',
     emoji: '⚖️',
     ctaLabel: 'Read Full Story →',
     ctaHref: '/quiz',
     meta: '5 min read · +120 XP',
   },
   gameModesFull: [
-    { tag: 'RIGHTS ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Do You Actually Know Your Consumer Rights?',         body: 'Five rapid-fire questions on GDPR, PSD2, and the law banks hope you never read. Thirty seconds each.',    emoji: '⚖️', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
+    { tag: 'RIGHTS ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Do You Actually Know Your Consumer Rights?',         body: 'Five rapid-fire questions on GDPR, PSD2, and the consumer-protection law every client should know. Thirty seconds each.', emoji: '⚖️', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
     { tag: 'DECISION ROOM', kicker: 'EXCLUSIVE SCENARIO',  headline: 'Consumer Faces Fraudulent Charge — What Would You Do?', body: 'One dispute. Multiple paths. Real legal consequences. Enter the Decision Room and choose wisely.',      emoji: '🎲', accent: '#E63946', cta: 'Enter Room →',    href: '/decision' },
     { tag: 'CARTOON EPISODE', kicker: 'STORY-BASED LEARNING', headline: 'Can You Win a Chargeback Without Hiring a Lawyer?',      body: "Choose your character. Face real-life legal dilemmas. Every clause matters — and your rights depend on it.", emoji: '🎬', accent: '#FF7B25', cta: 'Watch Episode →', href: '/episode' },
   ],
@@ -184,13 +198,13 @@ const LEGAL_CONTENT: HomeContent = {
   },
   forecast: {
     label: 'Legal Forecast',
-    body: '⚖️ Clear skies with a strong <strong>right-to-erasure</strong> breeze. Bank T&Cs advised to take shelter.',
+    body: '⚖️ Clear skies with a strong <strong>right-to-erasure</strong> breeze. Every contract should read accordingly.',
   },
   spreads: [
     {
       label: 'Front Page',
-      headline: 'GDPR Scandal Rocks Banking — Your Rights You Never Knew You Had',
-      subhead: 'Consumer advocates reveal the clauses banks hope you never read',
+      headline: 'GDPR Spotlight: The Rights Every Client Already Has',
+      subhead: 'Consumer advocates walk through the clauses every client should know about',
     },
     {
       label: 'Game Modes',
@@ -207,32 +221,32 @@ const LEGAL_CONTENT: HomeContent = {
 
 const PKO_CONTENT: HomeContent = {
   mastheadSubtitle: '"All The Financial News Fit To Play · PKO Edition"',
-  sectionNav: ['Savings', 'Mortgages', 'IKE/IKZE', 'Loans', 'Challenges'],
+  sectionNav: MINIGAME_NAV,
   ticker: [
-    '★ PKO EXCLUSIVE: New savings rates — are you getting yours?',
+    '★ PKO EXCLUSIVE: New promotional savings rates now live — optimize yours today',
     '★ IKE/IKZE ALERT: Tax-free retirement limits raised for 2026',
     '★ MORTGAGE WATCH: WIBOR ticks down — refinance window opens',
     '★ DAILY CHALLENGE: Today\'s PKO puzzle is live — +120 XP',
-    '★ COMPOUND INTEREST: The PKO secret banks hope you never discover',
+    '★ COMPOUND INTEREST: The PKO fundamental every smart saver should master',
   ],
   hero: {
     eyebrow: "Today's PKO Feature",
-    headline: 'PKO Savings Revolution: The Rate Your Branch Never Mentions',
+    headline: 'PKO Savings Upgrade: The Premium Rate Every Client Can Unlock',
     dropCapLetter: 'P',
     dropCapRest:
-      'KO customers who asked one simple question unlocked savings rates 2.4× higher than the default. The trick? Knowing the difference between <em>promocyjne</em> and <em>standardowe</em> accounts — and exactly when to migrate. Our team rebuilt the playbook from scratch…',
+      'KO clients who booked a quick chat with their adviser discovered promotional savings rates up to 2.4× higher than the standard default. The trick: knowing the difference between <em>promocyjne</em> and <em>standardowe</em> accounts — and timing your migration right. PKO\'s team built the playbook with us…',
     emoji: '🏦',
     ctaLabel: 'Read Full Story →',
     ctaHref: '/quiz',
     meta: '5 min read · +120 XP',
   },
   gameModesFull: [
-    { tag: 'QUICK ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Can You Beat a PKO Product Advisor at Their Own Game?',    body: 'Five questions on IKE, IKZE, and the Polish banking products every customer should know.',                emoji: '🏦', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
+    { tag: 'QUICK ROUNDS',  kicker: 'TEST YOUR KNOWLEDGE', headline: 'Think Like a PKO Product Adviser — Nail Five In A Row?',    body: 'Five questions on IKE, IKZE, and the Polish banking products every savvy client should know.',                emoji: '🏦', accent: '#FFCD00', cta: 'Start Quiz →',    href: '/quiz' },
     { tag: 'DECISION ROOM', kicker: 'EXCLUSIVE SCENARIO',  headline: 'Young Warsaw Professional Faces 30-Year Mortgage Choice', body: 'Fixed or variable? WIBOR or WIRON? One scenario, multiple paths, real zlotys on the line.',                emoji: '🎲', accent: '#E63946', cta: 'Enter Room →',    href: '/decision' },
     { tag: 'CARTOON EPISODE', kicker: 'STORY-BASED LEARNING', headline: 'Can You Retire Early on a Warsaw Salary?',                  body: "Choose your character. Navigate IKE, IKZE, ETFs, and the ZUS maze. Every choice shifts your FIRE date.",   emoji: '🎬', accent: '#FF7B25', cta: 'Watch Episode →', href: '/episode' },
   ],
   gameModesCompact: [
-    { tag: 'QUICK ROUNDS', kicker: 'KNOWLEDGE TEST', headline: 'Can You Beat a PKO Product Advisor?', emoji: '🏦', accent: '#FFCD00', xp: '+80 XP', href: '/quiz' },
+    { tag: 'QUICK ROUNDS', kicker: 'KNOWLEDGE TEST', headline: 'Think Like a PKO Product Adviser', emoji: '🏦', accent: '#FFCD00', xp: '+80 XP', href: '/quiz' },
     { tag: 'DECISION ROOM', kicker: 'SCENARIO', headline: 'Warsaw Pro Faces 30-Year Mortgage Choice', emoji: '🎲', accent: '#E63946', xp: '+150 XP', href: '/decision' },
     { tag: 'CARTOON EPISODE', kicker: 'STORY GAME', headline: 'Can You Retire Early on a Warsaw Salary?', emoji: '🎬', accent: '#FF7B25', xp: '+200 XP', href: '/episode' },
   ],
@@ -258,8 +272,8 @@ const PKO_CONTENT: HomeContent = {
   spreads: [
     {
       label: 'Front Page',
-      headline: 'PKO Savings Scandal: The Rate Every Customer Deserves',
-      subhead: 'How one simple conversation unlocked 2.4× higher rates for thousands of PKO clients',
+      headline: 'PKO Savings Spotlight: The Premium Rate Every Client Can Unlock',
+      subhead: 'How a quick chat with a PKO adviser helped thousands of clients optimize their savings',
     },
     {
       label: 'Game Modes',
@@ -276,7 +290,7 @@ const PKO_CONTENT: HomeContent = {
 
 const ETH_SILESIA_CONTENT: HomeContent = {
   mastheadSubtitle: '"All The On-Chain News Fit To Play"',
-  sectionNav: ['DeFi', 'Staking', 'L2s', 'NFTs', 'Challenges'],
+  sectionNav: MINIGAME_NAV,
   ticker: [
     '★ L2 ROTATION: Base TVL crosses Optimism — Silesia builders take note',
     '★ STAKING WATCH: Solo validators now earning 3.8% real yield on ETH',
@@ -345,7 +359,7 @@ const ETH_SILESIA_CONTENT: HomeContent = {
 
 const WARSAW_UNI_CONTENT: HomeContent = {
   mastheadSubtitle: '"All The Student Finance News Fit To Play"',
-  sectionNav: ['Basics', 'Student Loans', 'First Job', 'Renting', 'Challenges'],
+  sectionNav: MINIGAME_NAV,
   ticker: [
     '★ STUDENT SPECIAL: How to open your first IKE before graduation',
     '★ SCHOLARSHIP ALERT: Tax rules every UW student gets wrong',
@@ -414,7 +428,7 @@ const WARSAW_UNI_CONTENT: HomeContent = {
 
 const FINTECH_HUB_CONTENT: HomeContent = {
   mastheadSubtitle: '"All The FinTech News Fit To Play"',
-  sectionNav: ['APIs', 'Payments', 'Embedded', 'Regtech', 'Challenges'],
+  sectionNav: MINIGAME_NAV,
   ticker: [
     '★ PSD3 DRAFT: New API mandates — what every fintech founder must prepare for',
     '★ STABLECOIN WATCH: MiCA passporting opens doors for Polish issuers',

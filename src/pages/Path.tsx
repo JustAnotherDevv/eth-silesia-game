@@ -680,7 +680,7 @@ function VictoryPhase({
 
       <div style={{
         fontFamily: "'Fredoka One', cursive", fontSize: '2.4rem',
-        color: grade.color, textShadow: `3px 3px 0 ${ink}`,
+        color: grade.color,
         animation: 'slam 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.2s both',
         zIndex: 1,
       }}>{grade.label}</div>

@@ -97,17 +97,6 @@ export function OrgSwitcher() {
     }
   }
 
-  if (!current && joined.length === 0) {
-    return (
-      <button onClick={openModal} style={{
-        fontFamily:"'Fredoka One', cursive", fontSize:'0.7rem',
-        padding:'5px 14px', borderRadius:'9999px',
-        border:`2px solid ${ink}`, background:paper,
-        cursor:'pointer', boxShadow:`3px 3px 0 ${ink}`,
-      }}>🏢 Join a Space</button>
-    )
-  }
-
   return (
     <>
       {/* ── Pill trigger ───────────────────────────────────── */}
@@ -118,14 +107,14 @@ export function OrgSwitcher() {
           letterSpacing: '0.05em',
           padding: '5px 9px 5px 7px', borderRadius: '9999px',
           border: `2px solid ${ink}`,
-          background: current?.color ?? '#1565C0', color: '#1A0800',
+          background: current?.color ?? paper, color: ink,
           cursor: 'pointer',
           boxShadow: open ? '1px 1px 0 var(--rh-ink)' : '3px 3px 0 var(--rh-ink)',
           transform: open ? 'translate(2px,2px)' : '',
           transition: 'all 0.1s', whiteSpace: 'nowrap',
         }}>
           <span style={{ fontSize: '0.85rem' }}>{current?.emoji ?? '🏢'}</span>
-          <span style={{ maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis' }}>{current?.name ?? '…'}</span>
+          <span style={{ maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis' }}>{current?.name ?? 'Join a Space'}</span>
           <span style={{ fontSize: '0.55rem', opacity: 0.65 }}>{open ? '▲' : '▼'}</span>
         </button>
 
@@ -140,7 +129,7 @@ export function OrgSwitcher() {
             animation: 'fly-in-left 0.18s ease both',
           }}>
             {/* Joined list */}
-            <div style={{ padding: '10px 10px 4px' }}>
+            {joined.length > 0 && <div style={{ padding: '10px 10px 4px' }}>
               <div style={{
                 fontFamily: "'Fredoka One', cursive", fontSize: '0.58rem',
                 letterSpacing: '0.14em', textTransform: 'uppercase',
@@ -179,9 +168,9 @@ export function OrgSwitcher() {
                   )}
                 </button>
               ))}
-            </div>
+            </div>}
 
-            <div style={{ borderTop: `2px solid color-mix(in srgb, ${ink} 10%, transparent)`, margin: '2px 0' }}/>
+            {joined.length > 0 && <div style={{ borderTop: `2px solid color-mix(in srgb, ${ink} 10%, transparent)`, margin: '2px 0' }}/>}
 
             {/* Admin panel link — only visible to admin */}
             {isAdmin && (

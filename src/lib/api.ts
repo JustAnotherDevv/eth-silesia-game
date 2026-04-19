@@ -1,9 +1,21 @@
+import { supabase } from './supabase'
+
 const BASE = '/api'
 
+async function getAuthHeader(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return {}
+  return { Authorization: `Bearer ${session.access_token}` }
+}
+
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const authHeader = await getAuthHeader()
+  const headers: Record<string, string> = { ...authHeader }
+  if (body) headers['Content-Type'] = 'application/json'
+
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) throw new Error(`${method} ${path} → ${res.status}`)
@@ -29,7 +41,7 @@ export const getUserOrgs = (id: string) => req<Org[]>('GET', `/users/${id}/orgs`
 
 // Games
 export const submitGame = (data: {
-  userId: string
+  userId?: string  // ignored by server — userId comes from JWT
   gameType: string
   xpEarned: number
   score?: number
@@ -49,11 +61,11 @@ export const getLeaderboardStats = () =>
 // Orgs
 export const getOrgs = () => req<Org[]>('GET', '/orgs')
 
-export const joinOrg = (orgId: string, userId: string) =>
-  req<{ success: boolean }>('POST', `/orgs/${orgId}/join`, { userId })
+export const joinOrg = (orgId: string) =>
+  req<{ success: boolean }>('POST', `/orgs/${orgId}/join`, {})
 
-export const joinOrgByCode = (userId: string, code: string) =>
-  req<Org>('POST', '/orgs/join-by-code', { userId, code })
+export const joinOrgByCode = (code: string) =>
+  req<Org>('POST', '/orgs/join-by-code', { code })
 
 export const getOrgMembers = (orgId: string) => req<User[]>('GET', `/orgs/${orgId}/members`)
 
@@ -152,7 +164,6 @@ export interface ApiMember {
   bio: string
   badgeCount: number
   joinedAt?: string
-  // Detail-only fields (populated when fetching /members/:slug)
   gamesPlayed?: number
   xpBreakdown?: Record<string, number>
   recentActivity?: Array<{

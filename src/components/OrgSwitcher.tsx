@@ -78,14 +78,14 @@ export function OrgSwitcher() {
     if (!session?.id) return
     try {
       if (tab === 'public') {
-        await joinOrg(pickId, session.id)
+        await joinOrg(pickId)
         const org = allOrgs.find(o => o.id === pickId)
         if (org) {
           setJoined(prev => prev.some(j => j.id === org.id) ? prev : [...prev, org])
           setCurrentId(org.id)
         }
       } else {
-        const org = await joinOrgByCode(session.id, code.trim())
+        const org = await joinOrgByCode(code.trim())
         if (org) {
           setJoined(prev => prev.some(j => j.id === org.id) ? prev : [...prev, org])
           setCurrentId(org.id)

@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { supabase } from '../supabase.js'
+import { sanitizeError } from '../middleware/errorHandler.js'
 
 export const leaderboard = new Hono()
 
@@ -36,12 +37,16 @@ leaderboard.get('/', async (c) => {
   }
 
   const { data, error } = await query
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json({ error: sanitizeError(error) }, 500)
 
   return c.json(
     (data ?? []).map((u, i) => {
       const lvl = getLevel(u.xp)
-      return { ...u, rank: i + 1, level: lvl.label, accent: lvl.color, xpMax: lvl.xpMax }
+      return {
+        id: u.id, username: u.username, display_name: u.display_name,
+        avatar: u.avatar, xp: u.xp, streak: u.streak,
+        rank: i + 1, level: lvl.label, accent: lvl.color, xpMax: lvl.xpMax,
+      }
     })
   )
 })

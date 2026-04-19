@@ -1,5 +1,8 @@
 import { Hono } from 'hono'
 import { supabase } from '../supabase.js'
+import { requireAuth } from '../middleware/auth.js'
+import { joinCodeLimiter } from '../middleware/rateLimit.js'
+import { sanitizeError } from '../middleware/errorHandler.js'
 
 export const orgs = new Hono()
 
@@ -10,7 +13,7 @@ orgs.get('/', async (c) => {
     .eq('is_public', true)
     .order('name')
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json({ error: sanitizeError(error) }, 500)
 
   return c.json(
     (data ?? []).map(o => ({
@@ -32,16 +35,16 @@ orgs.get('/:id', async (c) => {
     .eq('id', c.req.param('id'))
     .maybeSingle()
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json({ error: sanitizeError(error) }, 500)
   if (!data) return c.json({ error: 'not found' }, 404)
 
   const { org_members, ...rest } = data as Record<string, unknown> & { org_members: { count: number }[] }
   return c.json({ ...rest, member_count: org_members?.[0]?.count ?? 0 })
 })
 
-orgs.post('/:id/join', async (c) => {
-  const { userId } = await c.req.json()
-  if (!userId) return c.json({ error: 'userId required' }, 400)
+// A01: require auth for join — userId comes from verified JWT
+orgs.post('/:id/join', requireAuth, async (c) => {
+  const userId = c.get('userId')
 
   const { data: org } = await supabase.from('orgs').select('id').eq('id', c.req.param('id')).maybeSingle()
   if (!org) return c.json({ error: 'org not found' }, 404)
@@ -50,17 +53,28 @@ orgs.post('/:id/join', async (c) => {
     .from('org_members')
     .upsert({ user_id: userId, org_id: c.req.param('id') }, { onConflict: 'user_id,org_id', ignoreDuplicates: true })
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json({ error: sanitizeError(error) }, 500)
   return c.json({ success: true })
 })
 
-orgs.post('/join-by-code', async (c) => {
-  const { userId, code } = await c.req.json()
-  if (!userId || !code) return c.json({ error: 'userId and code required' }, 400)
+// A01 + A07: require auth + rate-limit invite code attempts
+orgs.post('/join-by-code', requireAuth, joinCodeLimiter, async (c) => {
+  const userId = c.get('userId')
 
-  const upperCode = code.toUpperCase()
+  let body: unknown
+  try { body = await c.req.json() } catch { return c.json({ error: 'invalid JSON' }, 400) }
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return c.json({ error: 'request body must be a JSON object' }, 400)
+  }
 
-  // Check invite_codes table first (admin-managed codes)
+  const { code } = body as Record<string, unknown>
+  if (!code || typeof code !== 'string') return c.json({ error: 'code required' }, 400)
+
+  // Constrain code length to prevent DoS via oversized string
+  if (code.length > 20) return c.json({ error: 'invalid code' }, 400)
+
+  const upperCode = code.toUpperCase().replace(/[^A-Z0-9]/g, '')
+
   const { data: invite } = await supabase
     .from('invite_codes')
     .select('org_id, uses, max_uses, active')
@@ -76,7 +90,6 @@ orgs.post('/join-by-code', async (c) => {
     orgId = invite.org_id
     await supabase.from('invite_codes').update({ uses: invite.uses + 1 }).eq('code', upperCode)
   } else {
-    // Fall back to org.invite_code
     const { data: org } = await supabase
       .from('orgs')
       .select('id')
@@ -102,7 +115,7 @@ orgs.get('/:id/members', async (c) => {
     .eq('org_id', c.req.param('id'))
     .order('users(xp)', { ascending: false })
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json({ error: sanitizeError(error) }, 500)
   return c.json(
     (data ?? []).map(row => ({ ...(row.users as object), joined_at: row.joined_at }))
   )

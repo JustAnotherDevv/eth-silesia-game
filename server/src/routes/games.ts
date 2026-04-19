@@ -1,7 +1,14 @@
 import { Hono } from 'hono'
 import { supabase } from '../supabase.js'
+import { requireAuth } from '../middleware/auth.js'
+import { validateUUID } from '../middleware/validate.js'
+import { sanitizeError } from '../middleware/errorHandler.js'
+import { LIMITS } from '../middleware/validate.js'
+import { gameLimiter } from '../middleware/rateLimit.js'
 
 export const games = new Hono()
+
+const ALLOWED_GAME_TYPES = new Set(['quiz', 'decision', 'swipe', 'fraud', 'path'])
 
 const GAME_LABELS: Record<string, string> = {
   quiz:     'Quick Rounds',
@@ -11,13 +18,30 @@ const GAME_LABELS: Record<string, string> = {
   path:     'Learning Path',
 }
 
-games.post('/', async (c) => {
-  const body = await c.req.json()
-  const { userId, gameType, xpEarned = 0, score = 0, total = 0, metadata = {} } = body
+// A01: require auth; extract userId from verified JWT, never from body
+games.post('/', requireAuth, gameLimiter, async (c) => {
+  const userId = c.get('userId')
 
-  if (!userId || !gameType) {
-    return c.json({ error: 'userId and gameType required' }, 400)
+  let body: unknown
+  try { body = await c.req.json() } catch { return c.json({ error: 'invalid JSON' }, 400) }
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return c.json({ error: 'request body must be a JSON object' }, 400)
   }
+
+  const { gameType, xpEarned = 0, score = 0, total = 0, metadata = {} } = body as Record<string, unknown>
+
+  if (!gameType) return c.json({ error: 'gameType required' }, 400)
+
+  // A05: validate gameType against allowlist
+  if (!ALLOWED_GAME_TYPES.has(String(gameType))) {
+    return c.json({ error: 'invalid gameType' }, 400)
+  }
+
+  // A06: cap XP, clamp score/total, validate metadata is object
+  const clampedXp   = Math.min(Math.max(0, Number(xpEarned) || 0), LIMITS.XP_PER_SUBMISSION_MAX)
+  const safeMetadata = (metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata))
+    ? metadata as Record<string, unknown>
+    : {}
 
   const { data: user, error: userErr } = await supabase
     .from('users')
@@ -25,16 +49,13 @@ games.post('/', async (c) => {
     .eq('id', userId)
     .maybeSingle()
 
-  if (userErr) return c.json({ error: userErr.message }, 500)
+  if (userErr) return c.json({ error: sanitizeError(userErr) }, 500)
   if (!user) return c.json({ error: 'user not found' }, 404)
 
-  // ── XP eligibility check (before inserting game result) ───────
-  // Path: only award XP the first time a node is completed
-  // Other games: 5-minute cooldown per game type to prevent replay farming
-  let effectiveXp = xpEarned
+  let effectiveXp = clampedXp
 
   if (gameType === 'path') {
-    const nodeId = (metadata as Record<string, unknown>).nodeId
+    const nodeId = safeMetadata.nodeId
     if (nodeId) {
       const { data: alreadyDone } = await supabase
         .from('path_progress')
@@ -50,21 +71,28 @@ games.post('/', async (c) => {
       .from('game_results')
       .select('id')
       .eq('user_id', userId)
-      .eq('game_type', gameType)
+      .eq('game_type', String(gameType))
       .gte('created_at', cooldownStart)
       .limit(1)
       .maybeSingle()
     if (recentGame) effectiveXp = 0
   }
 
-  // Insert game result (history always recorded, XP reflects actual grant)
+  const safeScore = Math.max(0, Number(score) || 0)
+  const safeTotal = Math.max(0, Number(total) || 0)
+
+  // Score cannot exceed total (impossible result)
+  if (safeTotal > 0 && safeScore > safeTotal) {
+    return c.json({ error: 'score cannot exceed total' }, 400)
+  }
+
   const { data: result, error: insertErr } = await supabase
     .from('game_results')
-    .insert({ user_id: userId, game_type: gameType, xp_earned: effectiveXp, score, total, metadata })
+    .insert({ user_id: userId, game_type: String(gameType), xp_earned: effectiveXp, score: safeScore, total: safeTotal, metadata: safeMetadata })
     .select('id')
     .single()
 
-  if (insertErr) return c.json({ error: insertErr.message }, 500)
+  if (insertErr) return c.json({ error: sanitizeError(insertErr) }, 500)
 
   const today     = new Date().toISOString().split('T')[0]
   const yesterday = new Date(Date.now() - 86_400_000).toISOString().split('T')[0]
@@ -80,10 +108,8 @@ games.post('/', async (c) => {
     .update({ xp: newXp, streak: newStreak, last_active: today })
     .eq('id', userId)
 
-  // ── Badge checks ──────────────────────────────────────────────
   const newBadges: string[] = []
 
-  // Count total games played (including this one)
   const { count: gameCount } = await supabase
     .from('game_results')
     .select('id', { count: 'exact', head: true })
@@ -91,24 +117,19 @@ games.post('/', async (c) => {
 
   if (gameCount === 1) newBadges.push('first_quiz')
 
-  // XP thresholds (use effectiveXp so replays don't trigger these)
   for (const [id, threshold] of [['xp_500', 500], ['xp_1000', 1000], ['xp_5000', 5000], ['xp_10000', 10000]] as [string, number][]) {
     if (user.xp < threshold && newXp >= threshold) newBadges.push(id)
   }
 
-  // Streak thresholds
   if (user.streak < 7  && newStreak >= 7)  newBadges.push('streak_7')
   if (user.streak < 30 && newStreak >= 30) newBadges.push('streak_30')
 
-  // Perfect score (badge earned even on replay — it's a skill achievement)
-  if (score === total && total > 0) newBadges.push('perfect_round')
+  if (safeScore === safeTotal && safeTotal > 0) newBadges.push('perfect_round')
 
-  // Game-type specific
-  if (gameType === 'fraud' && score >= 5) newBadges.push('fraud_fighter')
-  if (gameType === 'swipe' && score === total && total > 0) newBadges.push('wise_swiper')
-  if (gameType === 'decision' && (metadata as Record<string, unknown>).outcome === 'brilliant') newBadges.push('decision_maker')
+  if (gameType === 'fraud' && safeScore >= 5) newBadges.push('fraud_fighter')
+  if (gameType === 'swipe' && safeScore === safeTotal && safeTotal > 0) newBadges.push('wise_swiper')
+  if (gameType === 'decision' && safeMetadata.outcome === 'brilliant') newBadges.push('decision_maker')
 
-  // Quiz master: 20+ quiz games
   if (gameType === 'quiz') {
     const { count: quizCount } = await supabase
       .from('game_results')
@@ -118,9 +139,8 @@ games.post('/', async (c) => {
     if ((quizCount ?? 0) >= 20) newBadges.push('quiz_master')
   }
 
-  // Path-specific: write path_progress and check milestones
   if (gameType === 'path') {
-    const nodeId = (metadata as Record<string, unknown>).nodeId
+    const nodeId = safeMetadata.nodeId
     if (nodeId) {
       await supabase
         .from('path_progress')
@@ -147,7 +167,6 @@ games.post('/', async (c) => {
     }
   }
 
-  // Filter to only newly earned badges
   let awardedBadges: string[] = []
   if (newBadges.length > 0) {
     const { data: existing } = await supabase
@@ -170,14 +189,21 @@ games.post('/', async (c) => {
   return c.json({ id: result.id, xpEarned: effectiveXp, newXp, newStreak, newBadges: awardedBadges })
 })
 
-games.get('/user/:userId', async (c) => {
+// A01: only fetch own game history (auth required, userId from JWT)
+games.get('/user/:userId', requireAuth, validateUUID('userId'), async (c) => {
+  const callerUserId = c.get('userId')
+  const targetUserId = c.req.param('userId')
+
+  // Users may only see their own game history
+  if (callerUserId !== targetUserId) return c.json({ error: 'forbidden' }, 403)
+
   const { data, error } = await supabase
     .from('game_results')
     .select('*')
-    .eq('user_id', c.req.param('userId'))
+    .eq('user_id', targetUserId)
     .order('created_at', { ascending: false })
     .limit(50)
 
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json({ error: sanitizeError(error) }, 500)
   return c.json((data ?? []).map(r => ({ ...r, label: GAME_LABELS[r.game_type] ?? r.game_type })))
 })

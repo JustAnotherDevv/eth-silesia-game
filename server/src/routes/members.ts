@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 import { supabase } from '../supabase.js'
+import { sanitizeSearch } from '../middleware/validate.js'
+import { sanitizeError } from '../middleware/errorHandler.js'
 
 export const members = new Hono()
 
@@ -25,9 +27,10 @@ const GAME_LABELS: Record<string, string> = {
 
 members.get('/', async (c) => {
   const orgId    = c.req.query('orgId')
-  const limit    = Math.min(Number(c.req.query('limit')  ?? 50), 100)
-  const offset   = Number(c.req.query('offset') ?? 0)
-  const search   = c.req.query('search')?.toLowerCase()
+  const limit    = Math.min(Math.max(1, Number(c.req.query('limit')  ?? 50) || 50), 100)
+  const offset   = Math.max(0, Number(c.req.query('offset') ?? 0) || 0)
+  const rawSearch = c.req.query('search') ?? ''
+  const search   = rawSearch ? sanitizeSearch(rawSearch) : ''
   const today    = new Date().toISOString().split('T')[0]
 
   let query = supabase
@@ -46,7 +49,7 @@ members.get('/', async (c) => {
   }
 
   const { data: users, error } = await query
-  if (error) return c.json({ error: error.message }, 500)
+  if (error) return c.json({ error: sanitizeError(error) }, 500)
 
   const { data: allBadgeCounts } = await supabase
     .from('user_badges')
@@ -89,11 +92,11 @@ members.get('/:slug', async (c) => {
 
   const { data: u, error: userErr } = await supabase
     .from('users')
-    .select('*')
+    .select('id, username, display_name, avatar, xp, streak, last_active, specialty, location, bio, goals, created_at')
     .eq('username', slug)
     .maybeSingle()
 
-  if (userErr) return c.json({ error: userErr.message }, 500)
+  if (userErr) return c.json({ error: sanitizeError(userErr) }, 500)
   if (!u) return c.json({ error: 'not found' }, 404)
 
   const [{ data: gameResults }, { data: userBadges }, { data: orgRows }] = await Promise.all([

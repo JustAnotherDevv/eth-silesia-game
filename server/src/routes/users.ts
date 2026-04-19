@@ -63,6 +63,62 @@ users.post('/', async (c) => {
   return c.json(user, 201)
 })
 
+// GDPR Art. 15 — Right of Access: full export of everything we hold on the caller.
+users.get('/me/export', requireAuth, async (c) => {
+  const userId = c.get('userId')
+
+  const [profileRes, gamesRes, badgesRes, pathRes, orgsRes] = await Promise.all([
+    supabase.from('users').select('*').eq('id', userId).maybeSingle(),
+    supabase.from('game_results').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+    supabase.from('user_badges').select('badge_id, earned_at, badges(emoji, name, description)').eq('user_id', userId),
+    supabase.from('path_progress').select('node_id, completed_at').eq('user_id', userId),
+    supabase.from('org_members').select('org_id, is_admin, joined_at, orgs(id, name, emoji)').eq('user_id', userId),
+  ])
+
+  if (profileRes.error) return c.json({ error: sanitizeError(profileRes.error) }, 500)
+  if (!profileRes.data) return c.json({ error: 'not found' }, 404)
+
+  const body = {
+    exported_at: new Date().toISOString(),
+    user: profileRes.data,
+    game_results: gamesRes.data ?? [],
+    badges: badgesRes.data ?? [],
+    path_progress: pathRes.data ?? [],
+    org_memberships: orgsRes.data ?? [],
+    data_map: {
+      storage: 'Supabase PostgreSQL (EU region) + Supabase Auth',
+      client_local_storage: [
+        'knowly_active_org — the active space id',
+        'Supabase auth session (access/refresh tokens)',
+      ],
+      third_parties: 'None — Knowly does not share data with third parties.',
+      retention: 'Retained while account is active. Exercise right-to-erasure via DELETE /api/users/me.',
+    },
+  }
+
+  return c.json(body, 200, {
+    'Content-Disposition': `attachment; filename="knowly-export-${userId}.json"`,
+  })
+})
+
+// GDPR Art. 17 — Right to Erasure. CASCADE-delete the user row (drops game_results,
+// org_members, user_badges, path_progress via FK), then delete the auth record.
+users.delete('/me', requireAuth, async (c) => {
+  const userId = c.get('userId')
+
+  const { error: dbError } = await supabase.from('users').delete().eq('id', userId)
+  if (dbError) return c.json({ error: sanitizeError(dbError) }, 500)
+
+  const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+  if (authError) {
+    console.warn(`[SECURITY] ERASURE_AUTH_FAILED user=${userId} err=${authError.message}`)
+    return c.json({ error: 'auth deletion failed', dbDeleted: true }, 500)
+  }
+
+  console.warn(`[SECURITY] ERASURE_OK user=${userId}`)
+  return c.body(null, 204)
+})
+
 // Public fields only — never expose is_platform_admin or auth-internal fields
 const PUBLIC_USER_FIELDS = 'id, username, display_name, avatar, xp, streak, last_active, goals, created_at, specialty, location, bio'
 

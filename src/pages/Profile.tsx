@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { getUser, getUserGames, getUserBadges, type User, type GameResult, type UserBadge } from '../lib/api'
 import { getSession } from '../lib/session'
 import { useAuth } from '../contexts/AuthContext'
@@ -502,7 +502,7 @@ export default function Profile() {
           <div style={{ background: paper, border: `3px solid ${ink}`, borderRadius: '2rem 1.8rem 2rem 1.9rem', boxShadow: `8px 8px 0 ${ink}`, padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {[
               { label: 'Display Name', value: PLAYER.name, type: 'text' },
-              { label: 'Email', value: 'player@xpgazette.com', type: 'email' },
+              { label: 'Email', value: 'player@knowly.app', type: 'email' },
             ].map(f => (
               <div key={f.label}>
                 <label style={{ display: 'block', fontFamily: "'Fredoka One', cursive", fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', opacity: 0.7 }}>{f.label}</label>
@@ -524,6 +524,10 @@ export default function Profile() {
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
                 onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
               >🚪 Log Out</button>
+              <Link to="/profile/privacy" style={{ fontFamily: "'Fredoka One', cursive", fontSize: '0.82rem', letterSpacing: '0.07em', padding: '12px 28px', borderRadius: '9999px', border: `2.5px solid ${ink}`, background: surface, color: ink, boxShadow: `4px 4px 0 ${ink}`, textDecoration: 'none', transition: 'transform 0.1s, box-shadow 0.1s' }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = `6px 6px 0 ${ink}` }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `4px 4px 0 ${ink}` }}
+              >🔒 Privacy & Data</Link>
             </div>
           </div>
         )}

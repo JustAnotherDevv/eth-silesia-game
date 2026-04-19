@@ -39,6 +39,28 @@ export const updateUser = (id: string, data: Partial<Pick<User, 'displayName' | 
 
 export const getUserOrgs = (id: string) => req<Org[]>('GET', `/users/${id}/orgs`)
 
+// GDPR Art. 15 — download everything we hold on the caller.
+export async function exportMyData(): Promise<Blob> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('not authenticated')
+  const res = await fetch(`${BASE}/users/me/export`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+  if (!res.ok) throw new Error(`export failed → ${res.status}`)
+  return res.blob()
+}
+
+// GDPR Art. 17 — permanently erase the caller's account.
+export async function deleteMyAccount(): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('not authenticated')
+  const res = await fetch(`${BASE}/users/me`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+  if (!res.ok) throw new Error(`delete failed → ${res.status}`)
+}
+
 // Games
 export const submitGame = (data: {
   userId?: string  // ignored by server — userId comes from JWT

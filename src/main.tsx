@@ -8,6 +8,7 @@ import News from './pages/News'
 import Quiz from './pages/Quiz'
 import Design from './pages/Design'
 import Profile from './pages/Profile'
+import Privacy from './pages/Privacy'
 import Leaderboard from './pages/Leaderboard'
 import Decision from './pages/Decision'
 import Path from './pages/Path'
@@ -75,6 +76,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/quiz" element={<ProtectedRoute><Layout><Quiz /></Layout></ProtectedRoute>} />
           <Route path="/design" element={<ProtectedRoute><Layout><Design /></Layout></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+          <Route path="/profile/privacy" element={<ProtectedRoute><Layout><Privacy /></Layout></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
           <Route path="/decision" element={<ProtectedRoute><Layout><Decision /></Layout></ProtectedRoute>} />
           <Route path="/path" element={<ProtectedRoute><Layout><Path /></Layout></ProtectedRoute>} />

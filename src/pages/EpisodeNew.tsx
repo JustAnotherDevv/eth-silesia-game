@@ -2351,20 +2351,22 @@ function CitySidescroller({ onBack }: { onBack: () => void }) {
   },[triggerQuiz])
 
   const handleChoice=useCallback((idx:number)=>{
-    if(choiceResult||!encounter) return
-    const ch=encounter.choices[idx]
-    setChoiceResult({correct:ch.correct,reason:ch.reason})
+    if(choiceResult) return
     const gs=gsRef.current
+    const enc=gs.encounter
+    if(!enc) return
+    const ch=enc.choices[idx]
+    setChoiceResult({correct:ch.correct,reason:ch.reason})
     if(ch.correct){
-      gs.defeated.add(encounter.id);gs.xp+=100;gs.stars++;setXpDisplay(gs.xp)
+      gs.defeated.add(enc.id);gs.xp+=100;gs.stars++;setXpDisplay(gs.xp)
       for(let i=0;i<24;i++){
         const a=(i/24)*Math.PI*2, sp=4+Math.random()*5
-        particlesRef.current.push({x:encounter.x+35,y:encounter.y+40,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-5,life:55,maxLife:55,color:['#FFCD00','#E63946','#5DC264','#7B2D8B','#FF7B25'][i%5],r:4+Math.random()*4})
+        particlesRef.current.push({x:enc.x+35,y:enc.y+40,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-5,life:55,maxLife:55,color:['#FFCD00','#E63946','#5DC264','#7B2D8B','#FF7B25'][i%5],r:4+Math.random()*4})
       }
     } else {
       gs.player.hp=Math.max(0,gs.player.hp-1);gs.player.invincible=60;setHpDisplay(gs.player.hp)
     }
-  },[encounter,choiceResult])
+  },[choiceResult])
 
   const dismissQuiz=useCallback(()=>{
     const gs=gsRef.current

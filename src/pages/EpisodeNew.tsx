@@ -1964,7 +1964,7 @@ const W3_PLATFORMS = [
 
 interface W3Player { x:number; y:number; vx:number; vy:number; onGround:boolean; facingRight:boolean; walkFrame:number; walkTick:number; hp:number; invincible:number }
 interface W3Particle { x:number; y:number; vx:number; vy:number; life:number; maxLife:number; color:string; r:number }
-interface W3GS { player:W3Player; camera:number; tick:number; defeated:Set<string>; xp:number; stars:number; phase:'playing'|'quiz'|'win'; encounter:typeof W3_ENCOUNTERS[0]|null }
+interface W3GS { player:W3Player; camera:number; tick:number; defeated:Set<string>; xp:number; stars:number; phase:'playing'|'quiz'|'win'; encounter:typeof W3_ENCOUNTERS[0]|null; encCooldown:number }
 
 function drawW3Bg(ctx: CanvasRenderingContext2D, camX: number) {
   const sky = ctx.createLinearGradient(0,0,0,W3_GROUND_Y)
@@ -2176,16 +2176,8 @@ function drawW3Hacker(ctx: CanvasRenderingContext2D, x: number, y: number) {
 }
 
 function drawW3Enemy(ctx: CanvasRenderingContext2D, enc: typeof W3_ENCOUNTERS[0], camX: number, defeated: boolean, tick: number) {
+  if(defeated) return
   const sx=enc.x-camX; if(sx>W+100||sx<-100) return
-  if(defeated){
-    ctx.fillStyle='#FFCD00'
-    for(let i=0;i<6;i++){
-      const a=(i/6)*Math.PI*2+tick*0.05, r=22+Math.sin(tick*0.1+i)*6
-      ctx.beginPath();ctx.arc(sx+enc.w/2+Math.cos(a)*r,enc.y+enc.h/2+Math.sin(a)*r*0.5,5,0,Math.PI*2);ctx.fill()
-    }
-    ctx.fillStyle='#5DC264';ctx.font="bold 24px 'Fredoka One',cursive";ctx.textAlign='center'
-    ctx.fillText('✓',sx+enc.w/2,enc.y+enc.h/2+8);ctx.textAlign='left'; return
-  }
   const bounce=Math.sin(tick*0.05)*4
   ctx.fillStyle='rgba(0,0,0,0.15)'
   ctx.beginPath();ctx.ellipse(sx+enc.w/2,enc.y+enc.h+4,enc.w*0.5,7,0,0,Math.PI*2);ctx.fill()
@@ -2266,7 +2258,7 @@ function drawW3Particles(ctx: CanvasRenderingContext2D, particles: W3Particle[],
 function initW3GS(): W3GS {
   return {
     player:{x:60,y:W3_GROUND_Y-W3_CHAR_H,vx:0,vy:0,onGround:true,facingRight:true,walkFrame:0,walkTick:0,hp:3,invincible:0},
-    camera:0,tick:0,defeated:new Set(),xp:0,stars:0,phase:'playing',encounter:null,
+    camera:0,tick:0,defeated:new Set(),xp:0,stars:0,phase:'playing',encounter:null,encCooldown:0,
   }
 }
 
@@ -2332,11 +2324,14 @@ function CitySidescroller({ onBack }: { onBack: () => void }) {
       }
       if(Math.abs(p.vx)>0.4){if(++p.walkTick>=W3_WALK_TICKS){p.walkTick=0;p.walkFrame=(p.walkFrame+1)%6}}
       if(p.invincible>0) p.invincible--
+      if(gs.encCooldown>0) gs.encCooldown--
       const targetCam=Math.max(0,Math.min(p.x-W*0.38,W3_WORLD_W-W))
       gs.camera+=(targetCam-gs.camera)*0.12
-      for(const enc of W3_ENCOUNTERS){
-        if(gs.defeated.has(enc.id)) continue
-        if(p.x+32>enc.x&&p.x<enc.x+enc.w&&p.y+W3_CHAR_H>enc.y){gs.phase='quiz';gs.encounter=enc;triggerQuiz(enc);return}
+      if(gs.encCooldown===0){
+        for(const enc of W3_ENCOUNTERS){
+          if(gs.defeated.has(enc.id)) continue
+          if(p.x+32>enc.x&&p.x<enc.x+enc.w&&p.y+W3_CHAR_H>enc.y){gs.phase='quiz';gs.encounter=enc;triggerQuiz(enc);return}
+        }
       }
       if(p.x>=W3_WORLD_W-120){gs.phase='win';setPhase('win');return}
       particlesRef.current=updateW3Particles(particlesRef.current)
@@ -2375,7 +2370,7 @@ function CitySidescroller({ onBack }: { onBack: () => void }) {
     const gs=gsRef.current
     const enc=gs.encounter
     gs.player.x=enc ? enc.x - 40 : gs.player.x - 100
-    gs.player.vx=-5;gs.phase='playing';gs.encounter=null
+    gs.player.vx=-5;gs.phase='playing';gs.encounter=null;gs.encCooldown=120
     setQuizAnim(false);setPhase('playing');setEncounter(null);setChoiceResult(null)
   },[])
 
